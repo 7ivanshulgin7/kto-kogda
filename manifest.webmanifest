@@ -1,6 +1,7 @@
 {
   "name": "Кто когда",
   "short_name": "Кто когда",
+  "id": "./?app=kto-kogda-2",
   "lang": "ru",
   "start_url": "./",
   "scope": "./",
