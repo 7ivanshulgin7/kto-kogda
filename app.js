@@ -23,7 +23,7 @@ const verb = (id, base) => base + (P[id] && P[id].f ? 'а' : '');
 const MONTHS = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
 const MONTHS_G = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
 const WDF = ['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'];
-const KEYS = {auth:'kk-auth', cache:'kk-cache', pending:'kk-pending', demo:'kk-demo2', style:'kk-style', theme:'kk-theme'};
+const KEYS = {inst:'kk-inst', auth:'kk-auth', cache:'kk-cache', pending:'kk-pending', demo:'kk-demo2', style:'kk-style', theme:'kk-theme'};
 
 const pad = n => String(n).padStart(2,'0');
 const key = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
@@ -231,10 +231,10 @@ function renderPeople(){
 function renderInvites(){
   const me = ME();
   const list = entries.filter(e => e.inv && e.inv[me] === 'wait' && e.to >= TODAY_K).sort((a,b) => a.from.localeCompare(b.from));
-  $('invs').innerHTML = list.map(e => { const by = owner(e); return `<div class="inv" style="--c:${P[by].color}">
+  $('invs').innerHTML = (state.view === 'month' ? '' : installCardHTML()) + list.map(e => { const by = owner(e); return `<div class="inv" style="--c:${P[by].color}">
     <div style="min-width:0"><div class="who">${P[by].name} зовёт</div><div class="what">${esc(e.what)}</div><div class="meta">${fmtRange(e.from,e.to)}</div></div>
     <div class="invB"><button class="yes press" data-rsvp="${e.id}" data-ans="yes">Иду</button><button class="no press" data-rsvp="${e.id}" data-ans="no">Не иду</button></div></div>`; }).join('');
-  $('invs').hidden = !list.length;
+  $('invs').hidden = !$('invs').innerHTML;
 }
 
 // лента месяцев: от текущего (или выбранного) до последнего запланированного дела
@@ -364,10 +364,48 @@ function freeRanges(days){
 }
 
 let pushOn = false;
+/* ---------- установка на телефон ---------- */
+let installEvt = null;
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; if (typeof render === 'function' && $('invs')) render(); });
+addEventListener('appinstalled', () => { installEvt = null; store(KEYS.inst, 1); render(); toast('Готово', 'Иконка «Кто когда» появилась на экране'); });
+const UA = navigator.userAgent;
+const isAndroid = /Android/.test(UA);
+const isChrome = /Chrome\//.test(UA) && !/YaBrowser|SamsungBrowser|OPR\/|EdgA|MiuiBrowser|HeyTap|; wv\)|Telegram/.test(UA);
+const ICO_SHARE = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4M5 11v9h14v-9"/></svg>';
+const ICO_PLUS = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 8v8M8 12h8"/></svg>';
+const showInstallCard = () => !standalone && !load(KEYS.inst, 0);
+function installSteps(){
+  if (isIOS) return `<ol><li>Нажмите ${ICO_SHARE} «Поделиться» внизу экрана Safari (или в адресной строке).</li><li>Прокрутите и выберите ${ICO_PLUS} «На экран „Домой“».</li><li>Нажмите «Добавить». Открывайте приложение значком с экрана — только так придут уведомления.</li></ol>
+    <p class="note">Открыли из Telegram или WhatsApp? Сначала нажмите ⋯ или ${ICO_SHARE} и выберите «Открыть в Safari».</p>`;
+  if (isAndroid) return (installEvt ? '<button class="btn ok press" data-act="install" style="margin-top:0">Установить</button>'
+      : (isChrome ? '' : '<p class="lead"><b>Откройте эту ссылку в Google Chrome</b> — другие браузеры (например, Яндекс) часто не умеют ставить приложение на экран.</p>')
+      + '<ol><li>Нажмите меню ⋮ в Chrome (справа вверху).</li><li>Выберите «Установить приложение» или «Добавить на главный экран».</li><li>Подтвердите. Значок появится на экране телефона.</li></ol>')
+    + `<p class="note">Открыли из Telegram или WhatsApp? Нажмите ⋮ и выберите «Открыть в Chrome» или «Открыть в браузере».</p>
+       <p class="note">Пишет «уже установлено», а значка нет? Закройте все вкладки Chrome и попробуйте снова.</p>`;
+  return '<p class="lead">Откройте эту ссылку на телефоне: на iPhone — в Safari, на Android — в Google Chrome. Там появится инструкция.</p>';
+}
+function installCardHTML(){
+  if (!showInstallCard()) return '';
+  return `<div class="inst" role="region" aria-label="Как установить"><button class="x press" data-act="instHide" aria-label="Закрыть">×</button>
+    <b>Установите на телефон</b>${installSteps()}</div>`;
+}
+function openHowto(){
+  if (standalone) return toast('Установка', 'Приложение уже установлено');
+  store(KEYS.inst, 0); state.view = 'four'; render(); window.scrollTo({top:0, behavior:'smooth'});
+}
+async function doInstall(){
+  if (!installEvt) return openHowto();
+  installEvt.prompt();
+  let r = null; try { r = await installEvt.userChoice; } catch(e){}
+  installEvt = null;
+  if (r && r.outcome === 'accepted') store(KEYS.inst, 1);
+  render();
+}
 const seg = (attr, cur, opts) => `<div class="seg">${opts.map(([v,t]) => `<button data-${attr}="${v}" aria-pressed="${v === cur}">${t}</button>`).join('')}</div>`;
 function settingsHTML(){
   let h = `<div class="set">
     <div class="setRow"><div class="k">Тема</div>${seg('theme', themeName, [['auto','Авто'],['light','Светлая'],['dark','Тёмная']])}</div>
+    <div class="setRow"><div><div class="k">Установка на телефон</div><div class="v">${standalone ? 'Установлено' : 'Инструкция для iPhone и Android'}</div></div><button class="lnk press" data-act="howto">Как</button></div>
     <div class="setRow"><div class="k">Полосы</div>${seg('style', styleName, [['s1','Стекло'],['s2','Матовый'],['s3','Пастель']])}</div>`;
   if (!ONLINE) h += `<div class="setRow"><div><div class="k">Демо-режим · вы — ${P[ME()].name}</div><div class="v">Данные только на этом устройстве</div></div><button class="lnk press" data-act="reset">Сбросить</button></div>`;
   else {
@@ -615,6 +653,9 @@ document.addEventListener('click', ev => {
     case 'save': saveForm(); break;
     case 'delete': deleteForm(); break;
     case 'reset': entries = demo(); store(KEYS.demo, entries); render(); toast('Готово', 'Тестовые данные восстановлены'); break;
+    case 'howto': openHowto(); break;
+    case 'install': doInstall(); break;
+    case 'instHide': store(KEYS.inst, 1); render(); break;
     case 'login': openLogin(); break;
     case 'doLogin': doLogin(); break;
     case 'push': pushOn ? unsubscribePush() : subscribePush(true); break;
