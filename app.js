@@ -618,7 +618,7 @@ const statusOf = (e, p) => owner(e) === p ? 'создал' + (P[p].f ? 'а' : ''
 // форма своего дела
 let form = null;
 function openForm(e, date){
-  const isEdit = !!e, me = ME();
+  const isEdit = !!e, me = ME(); wheelFor = null;
   form = isEdit ? {id:e.id, people:new Set([...e.who, ...Object.keys(e.inv || {})].filter(p => p !== me)), from:e.from, to:e.to, what:e.what, src:e,
                    visAll: !Array.isArray(e.vis), vis: new Set(Array.isArray(e.vis) ? e.vis : [])}
                 : {id:null, people:new Set(), from:date||TODAY_K, to:date||TODAY_K, what:'', src:null, visAll:true, vis:new Set()};
@@ -627,9 +627,10 @@ function openForm(e, date){
     <label class="f" for="fWhat">Что за дело</label>
     <input class="in" id="fWhat" maxlength="60" placeholder="Например: сборы, Казань" value="${esc(form.what)}">
     <div class="row2">
-      <div><label class="f" for="fFrom">С</label><input class="in" type="date" id="fFrom" value="${form.from}"></div>
-      <div><label class="f" for="fTo">По</label><input class="in" type="date" id="fTo" value="${form.to}"></div>
+      <div><label class="f">С</label><button type="button" class="in dbtn press" data-dp="from" id="dpFrom">${dLabel(form.from)}</button></div>
+      <div><label class="f">По</label><button type="button" class="in dbtn press" data-dp="to" id="dpTo">${dLabel(form.to)}</button></div>
     </div>
+    <div class="wheel" id="wheel" hidden></div>
     <label class="f">Позвать</label>
     <div class="whoPick" id="pick">${pickHTML()}</div>
     <label class="f">Кто видит</label>
@@ -639,6 +640,42 @@ function openForm(e, date){
     <button class="btn press" data-act="save">Сохранить</button>
     ${isEdit ? '<button class="btn ghost press" data-act="delete">Удалить</button>' : ''}`);
 }
+/* ---------- барабан выбора даты ---------- */
+const WD_S = ['вс','пн','вт','ср','чт','пт','сб'];
+const dLabel = k => { const d = parse(k); return `${d.getDate()} ${MONTHS_G[d.getMonth()].slice(0,3)} ${d.getFullYear()} · ${WD_S[d.getDay()]}`; };
+const ITEM = 38;
+let wheelFor = null;
+function openWheel(which){
+  const w = $('wheel');
+  if (wheelFor === which){ w.hidden = true; wheelFor = null; markDp(); return; }
+  wheelFor = which;
+  const y0 = TODAY.getFullYear() - 1, years = [0,1,2,3,4,5].map(i => y0 + i);
+  const col = (name, items) => `<div class="wcol" data-col="${name}">${items.map(t => `<div class="wi">${t}</div>`).join('')}</div>`;
+  w.innerHTML = col('d', Array.from({length:31}, (_, i) => i + 1)) + col('m', MONTHS_G) + col('y', years) + '<div class="wband"></div>';
+  w.hidden = false; markDp();
+  setWheel(form[which], years);
+  w.querySelectorAll('.wcol').forEach(c => c.addEventListener('scroll', () => { clearTimeout(c._t); c._t = setTimeout(() => onWheel(years), 90); }, {passive:true}));
+  requestAnimationFrame(() => w.scrollIntoView({block:'nearest', behavior:'smooth'}));
+}
+function setWheel(k, years){
+  const d = parse(k), w = $('wheel');
+  const set = (n, i) => { const c = w.querySelector(`[data-col="${n}"]`); c.scrollTop = i * ITEM; };
+  set('d', d.getDate() - 1); set('m', d.getMonth()); set('y', Math.max(0, years.indexOf(d.getFullYear())));
+}
+function onWheel(years){
+  if (!wheelFor) return;
+  const w = $('wheel'), idx = n => Math.round(w.querySelector(`[data-col="${n}"]`).scrollTop / ITEM);
+  const y = years[Math.min(years.length - 1, idx('y'))], m = Math.min(11, idx('m'));
+  const dim = new Date(y, m + 1, 0).getDate();
+  let day = Math.min(31, idx('d') + 1);
+  if (day > dim){ day = dim; w.querySelector('[data-col="d"]').scrollTo({top:(dim - 1) * ITEM, behavior:'smooth'}); }
+  const k = key(new Date(y, m, day));
+  form[wheelFor] = k;
+  if (form.to < form.from){ if (wheelFor === 'from') form.to = k; else form.from = k; }
+  $('dpFrom').textContent = dLabel(form.from); $('dpTo').textContent = dLabel(form.to);
+}
+function markDp(){ ['from','to'].forEach(n => $('dp' + (n === 'from' ? 'From' : 'To')).classList.toggle('on', wheelFor === n)); }
+
 function visHTML(){
   if (form.visAll) return '<div class="hint" style="margin:0">Дело увидят все, с кем у вас есть связь.</div>';
   const me = ME();
@@ -658,7 +695,7 @@ function pickHTML(){
   }).join('');
 }
 function saveForm(){
-  const from = $('fFrom').value, to = $('fTo').value, what = $('fWhat').value.trim(), err = $('fErr');
+  const from = form.from, to = form.to, what = $('fWhat').value.trim(), err = $('fErr');
   if (!what) return err.textContent = 'Напишите, что за дело.';
   if (!from || !to) return err.textContent = 'Укажите обе даты.';
   if (to < from) return err.textContent = 'Дата «по» раньше даты «с».';
@@ -901,6 +938,7 @@ document.addEventListener('click', ev => {
   if (d.skin){ skinName = d.skin; store(KEYS.skin, skinName); applySkin(); render(); return; }
   if (d.person){ state.hidden.has(d.person) ? state.hidden.delete(d.person) : state.hidden.add(d.person); render(); return; }
   if (d.pick){ form.people.has(d.pick) ? form.people.delete(d.pick) : form.people.add(d.pick); $('pick').innerHTML = pickHTML(); $('visPick').innerHTML = visHTML(); return; }
+  if (d.dp){ openWheel(d.dp); return; }
   if (d.fvis){ form.visAll = d.fvis === 'all'; t.parentNode.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === t)); $('visPick').innerHTML = visHTML(); return; }
   if (d.vis){ form.vis.has(d.vis) ? form.vis.delete(d.vis) : form.vis.add(d.vis); t.setAttribute('aria-pressed', form.vis.has(d.vis)); return; }
   if (d.ltab){ loginTab = d.ltab; openLogin(); return; }
