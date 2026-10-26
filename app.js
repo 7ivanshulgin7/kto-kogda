@@ -66,7 +66,8 @@ function mergePut(prev, req, by){
     if (prev && prev.who.includes(p)) who.push(p);
     else inv[p] = (prev && prev.inv && prev.inv[p]) || 'wait';
   }
-  return {id:req.id, by, what:req.what, from:req.from, to:req.to, who, inv, ts:Date.now()};
+  const vis = Array.isArray(req.vis) ? req.vis.filter(p => p !== by) : 'all';
+  return {id:req.id, by, what:req.what, from:req.from, to:req.to, who, inv, vis, ts:Date.now()};
 }
 function applyOp(list, op){
   const i = list.findIndex(e => e.id === (op.entry ? op.entry.id : op.id));
@@ -292,7 +293,8 @@ function renderInvites(){
   const np = users.filter(u => u.status === 'pending').length;
   const adm = np && state.view !== 'set' ? `<div class="inv" style="--c:#FF9F0A"><div style="min-width:0"><div class="who">Разработчику</div><div class="what">Новых заявок: ${np}</div></div>
     <div class="invB"><button class="yes press" data-view="set">Открыть</button></div></div>` : '';
-  $('invs').innerHTML = (state.view === 'set' ? '' : installCardHTML() + adm + knocks) + (state.view === 'set' ? [] : list).map(e => { const by = owner(e); return `<div class="inv" style="--c:${P[by].color}">
+  const cta = state.view !== 'set' && !load('kk-guide', 0) ? `<button class="gcta press" data-act="guide">${TAB_IC.tip}Прочитай, как пользоваться</button>` : '';
+  $('invs').innerHTML = (state.view === 'set' ? '' : cta + installCardHTML() + adm + knocks) + (state.view === 'set' ? [] : list).map(e => { const by = owner(e); return `<div class="inv" style="--c:${P[by].color}">
     <div style="min-width:0"><div class="who">${esc(P[by].name)} зовёт</div><div class="what">${esc(e.what)}</div><div class="meta">${fmtRange(e.from,e.to)}</div></div>
     <div class="invB"><button class="yes press" data-rsvp="${e.id}" data-ans="yes">Иду</button><button class="no press" data-rsvp="${e.id}" data-ans="no">Не иду</button></div></div>`; }).join('');
   $('invs').hidden = !$('invs').innerHTML;
@@ -357,13 +359,14 @@ function markSel(){
   document.querySelectorAll(`#feed .day[data-day="${state.sel}"]`).forEach(b => b.classList.add('sel'));
 }
 
+const LOCK = '<svg class="lock" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-label="Видно не всем"><rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
 function evHTML(e){
   const w = waiting(e);
   const caps = e.who.map(p => `<i style="--c:${P[p].color}"></i>`).join('') + w.map(p => `<i class="wait" style="--c:${P[p].color}"></i>`).join('');
   const mine = owner(e) === ME();
   return `<button class="ev press" data-open="${e.id}">
     <span class="caps">${caps}</span>
-    <span style="min-width:0"><div class="what">${esc(e.what)}</div><div class="meta">${joinNames(e.who)}${w.length ? ` · ждём: ${joinNames(w)}` : ''}, ${fmtRange(e.from,e.to)}</div></span>
+    <span style="min-width:0"><div class="what">${e.vis && e.vis !== 'all' ? LOCK : ''}${esc(e.what)}</div><div class="meta">${joinNames(e.who)}${w.length ? ` · ждём: ${joinNames(w)}` : ''}, ${fmtRange(e.from,e.to)}${Array.isArray(e.vis) ? ` · видят: ${e.vis.length ? joinNames(e.vis) : 'только вы'}` : ''}</div></span>
     ${mine ? `<svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>` : ''}</button>`;
 }
 // дела дня — в шторке
@@ -441,7 +444,7 @@ function installSteps(){
       : (isChrome ? '' : '<p class="lead"><b>Откройте эту ссылку в Google Chrome</b> — другие браузеры (например, Яндекс) часто не умеют ставить приложение на экран.</p>')
       + '<ol><li>Нажмите меню ⋮ в Chrome (справа вверху).</li><li>Выберите «Установить приложение» или «Добавить на главный экран».</li><li>Подтвердите. Значок появится на экране телефона.</li></ol>')
     + `<p class="note">Открыли из Telegram или WhatsApp? Нажмите ⋮ и выберите «Открыть в Chrome» или «Открыть в браузере».</p>
-       <p class="note">Пишет «уже установлено», а значка нет? Закройте все вкладки Chrome и попробуйте снова.</p>`;
+       <p class="note"><b>Не устанавливается или пишет «уже установлено», а значка нет?</b> Где-то зависла вкладка, даже если её не видно. Нажмите квадратик с цифрой справа от адресной строки → ⋮ → «Закрыть все вкладки», откройте ссылку заново и установите.</p>`;
   return '<p class="lead">Откройте эту ссылку на телефоне: на iPhone — в Safari, на Android — в Google Chrome. Там появится инструкция.</p>';
 }
 function installCardHTML(){
@@ -517,31 +520,59 @@ function renderList(){
   $('vList').innerHTML = h;
 }
 function renderSet(){
-  let h = peopleHTML().replace('style="margin-top:28px"', '');
+  let h = guideHTML() + peopleHTML();
   if (meInfo && meInfo.admin) h += adminHTML();
   h += `<div class="sec" style="margin-top:28px">Приложение</div>` + settingsHTML().replace(/<p class="itv">[\s\S]*$/, '');
-  h += guideHTML();
   h += `<p class="itv"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h12M9 4v16" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" fill="none"/><path d="M12 8l4.5 12L21 8" stroke="#FF2E93" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>itivan</p>`;
   $('vSet').innerHTML = h;
 }
-const GUIDE = [
-  ['Как читать календарь', `<p>Каждый человек — свой цвет. Цветная полоса в дне — этот человек занят. Зелёная точка — в этот день свободны все, кого вы видите.</p>
-    <p>Кружки с именами сверху — фильтр: нажмите, чтобы скрыть или вернуть человека.</p>`],
-  ['Месяц и Год', `<p><b>Месяц</b> — главный экран. Листайте пальцем влево-вправо, нажмите на день, чтобы увидеть дела под календарём. Красная стрелка с годом слева вверху ведёт в «Год».</p>
-    <p><b>Год</b> — все месяцы столбиком до последнего запланированного дела. Нажмите на месяц или день, чтобы открыть его крупно.</p>`],
-  ['Своё дело', `<p>Кнопка <b>+</b> — новое дело: что, с какого по какое число. Занятым будете вы.</p>
-    <p>Можно <b>позвать</b> людей из ваших связей — им придёт приглашение «Иду / Не иду». Пока не ответили, их полоса не рисуется.</p>
-    <p>Менять и удалять дело может только тот, кто его создал. Чужое дело открывается на просмотр.</p>`],
-  ['Ближайшее', `<p>Свободные дни, когда не занят никто, и список всех дел по порядку. Нажмите на свободный промежуток — откроется этот месяц.</p>`],
-  ['Люди и приглашения', `<p>Новые люди попадают сюда <b>только по ссылке-приглашению</b>: Настройки → Люди → Пригласить. Ссылка одноразовая и работает 7 дней. Кто по ней зарегистрируется — сразу видит ваш календарь, а вы его.</p>
-    <p>Кто уже есть в приложении — можно <b>постучаться</b> по точному @нику. Человек примет запрос, и вы увидите календари друг друга. «Убрать» разрывает связь для обоих.</p>`],
-  ['Уведомления', `<p>Настройки → Уведомления → Включить. Приходят приглашения, ответы на них, запросы в связи и, если включено, новые дела ваших связей.</p>
-    <p>На iPhone уведомления работают только в приложении, установленном на экран «Домой».</p>`],
-  ['Второй телефон и ключ', `<p>Настройки → Ключ входа → скопируйте. На другом телефоне: «У меня есть ключ» и вставьте. Ключ — как пароль: никому не пересылайте.</p>
-    <p>На iPhone приложение с экрана «Домой» не видит вход из Safari — войдите в нём ключом ещё раз.</p>`]
-];
-const guideHTML = () => `<div class="sec" style="margin-top:28px">Как это работает</div><div class="set guide">${GUIDE.map(([t, b]) =>
-  `<details><summary>${t}</summary><div class="gbody">${b}</div></details>`).join('')}</div>`;
+// гайд «Как это работает» — в стиле Монеток: короткие шаги с картинками
+let guideOpen = false;
+const TAB_IC = {
+  month:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>',
+  year:'<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' + [5.5,12,18.5].map(y => [5.5,12,18.5].map(x => `<circle cx="${x}" cy="${y}" r="2.3"/>`).join('')).join('') + '</svg>',
+  list:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6.5h11M9 12h11M9 17.5h11"/><circle cx="4.6" cy="6.5" r="1.2" fill="currentColor"/><circle cx="4.6" cy="12" r="1.2" fill="currentColor"/><circle cx="4.6" cy="17.5" r="1.2" fill="currentColor"/></svg>',
+  set:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>',
+  link:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>',
+  knock:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/></svg>',
+  drop:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M17 11h5"/></svg>',
+  tip:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>'
+};
+// мини-день для картинок гайда
+const gday = (n, cols) => `<span class="gday${cols.length ? ' filled' : ''}${cols.length > 1 ? ' over' : ''}">${cols.length ? `<span class="bands">${cols.map(c => `<i style="--c:${c}"></i>`).join('')}</span>` : ''}<b>${n}</b></span>`;
+function guideBody(){
+  const [a, b] = [P[ME()] ? P[ME()].color : '#30B05A', '#BF5AF2'];
+  return `<div class="gbody">
+  <div class="gsec"><b>1. Полоса в дне — человек занят</b>
+    <div class="gflow3">
+      <span class="gex">${gday(12, [])}<span><b>Пусто</b>все свободны</span></span>
+      <span class="gex">${gday(13, [a])}<span><b>Одна полоса</b>занят один</span></span>
+      <span class="gex">${gday(14, [a, b])}<span><b>Две и больше</b>заняты несколько</span></span>
+    </div>
+    <div class="gnote">У каждого свой цвет. Кружки с именами над календарём — фильтр: нажми, чтобы спрятать человека.</div></div>
+  <div class="gsec"><b>2. Своё дело и приглашение</b>
+    <div class="gsteps"><span class="gstep">+</span><span class="garr">→</span><span class="gstep wide">Что и когда</span><span class="garr">→</span><span class="gstep wide">Позвать</span><span class="garr">→</span><span class="gstep wide ok">Иду</span></div>
+    <div class="gnote">Дело всегда на тебя. Позвать можно своих людей — у них появится «Иду / Не иду». Менять дело может только тот, кто его создал.</div>
+    <div class="gnote">«Кто видит»: <b>все мои люди</b> или <b>только выбранные</b> — остальные такое дело не увидят совсем. Такие дела помечены замочком.</div></div>
+  <div class="gsec"><b>3. Люди</b>
+    <div class="ggrid">
+      <div class="gcard">${TAB_IC.link}<b>Пригласить</b><span>одноразовая ссылка на 7 дней</span></div>
+      <div class="gcard">${TAB_IC.knock}<b>Постучаться</b><span>по точному @нику</span></div>
+      <div class="gcard">${TAB_IC.drop}<b>Убрать</b><span>и вы не видите друг друга</span></div>
+    </div>
+    <div class="gnote">Новый человек попадает сюда только по твоей ссылке — со стороны зарегистрироваться нельзя.</div></div>
+  <div class="gsec"><b>4. Кнопки внизу экрана</b>
+    <div class="gwhere">
+      <span>${TAB_IC.month}<b>Месяц</b>листай вниз, нажми на день — его дела</span>
+      <span>${TAB_IC.year}<b>Год</b>весь год сеткой, нажми на месяц</span>
+      <span>${TAB_IC.list}<b>Ближайшее</b>свободные дни и дела по порядку</span>
+      <span>${TAB_IC.set}<b>Настройки</b>люди, уведомления, ключ</span>
+    </div></div>
+  <div class="gsec gwarn">${TAB_IC.tip}<div><b>Не ставится на Android?</b> В Chrome зависла вкладка, даже если её не видно: квадратик с цифрой у адресной строки → ⋮ → «Закрыть все вкладки» → открой ссылку заново.
+    <br><b>Второй телефон:</b> Настройки → Ключ входа. На iPhone приложение с экрана «Домой» входит ключом отдельно от Safari.</div></div>
+  </div>`;
+}
+const guideHTML = () => `<details class="set gbox"${guideOpen ? ' open' : ''} id="guideBox"><summary><span class="gic">${TAB_IC.tip}</span><span class="gtt"><b>Как это работает</b><small>две минуты — и всё понятно</small></span><svg class="arr" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>${guideBody()}</details>`;
 
 function render(){
   const v = state.view, multi = isMulti(v), plain = v === 'list' || v === 'set';
@@ -588,8 +619,9 @@ const statusOf = (e, p) => owner(e) === p ? 'создал' + (P[p].f ? 'а' : ''
 let form = null;
 function openForm(e, date){
   const isEdit = !!e, me = ME();
-  form = isEdit ? {id:e.id, people:new Set([...e.who, ...Object.keys(e.inv || {})].filter(p => p !== me)), from:e.from, to:e.to, what:e.what, src:e}
-                : {id:null, people:new Set(), from:date||TODAY_K, to:date||TODAY_K, what:'', src:null};
+  form = isEdit ? {id:e.id, people:new Set([...e.who, ...Object.keys(e.inv || {})].filter(p => p !== me)), from:e.from, to:e.to, what:e.what, src:e,
+                   visAll: !Array.isArray(e.vis), vis: new Set(Array.isArray(e.vis) ? e.vis : [])}
+                : {id:null, people:new Set(), from:date||TODAY_K, to:date||TODAY_K, what:'', src:null, visAll:true, vis:new Set()};
   openSheet(`<h2>${isEdit ? 'Изменить дело' : 'Новое дело'}</h2>
     <div class="hint">Занят будешь ты. Остальных можно позвать — они подтвердят сами.</div>
     <label class="f" for="fWhat">Что за дело</label>
@@ -600,9 +632,21 @@ function openForm(e, date){
     </div>
     <label class="f">Позвать</label>
     <div class="whoPick" id="pick">${pickHTML()}</div>
+    <label class="f">Кто видит</label>
+    ${seg('fvis', form.visAll ? 'all' : 'some', [['all','Все мои люди'],['some','Только выбранные']])}
+    <div class="whoPick" id="visPick" style="margin-top:10px">${visHTML()}</div>
     <div class="err" id="fErr"></div>
     <button class="btn press" data-act="save">Сохранить</button>
     ${isEdit ? '<button class="btn ghost press" data-act="delete">Удалить</button>' : ''}`);
+}
+function visHTML(){
+  if (form.visAll) return '<div class="hint" style="margin:0">Дело увидят все, с кем у вас есть связь.</div>';
+  const me = ME();
+  const fr = PEOPLE.filter(p => p.id !== me && links.friends.includes(p.id));
+  if (!fr.length) return '<div class="hint" style="margin:0">Пока не с кем делиться — дело будет видно только вам.</div>';
+  return fr.map(p => { const forced = form.people.has(p.id), on = forced || form.vis.has(p.id);
+    return `<button type="button" class="chip press" style="--c:${p.color}" data-vis="${p.id}" aria-pressed="${on}"${forced ? ' disabled' : ''}><span class="dot"></span>${esc(p.name)}${forced ? ' <small>позван</small>' : ''}</button>`; }).join('')
+    + '<div class="hint" style="margin:6px 0 0;width:100%">Остальные не увидят это дело совсем. Позванные видят всегда.</div>';
 }
 function pickHTML(){
   const me = ME();
@@ -619,7 +663,7 @@ function saveForm(){
   if (!from || !to) return err.textContent = 'Укажите обе даты.';
   if (to < from) return err.textContent = 'Дата «по» раньше даты «с».';
   const me = ME(), wasEdit = !!form.id, r = fmtRange(from,to);
-  const entry = {id: form.id || newId(), what, from, to, people:[...form.people]};
+  const entry = {id: form.id || newId(), what, from, to, people:[...form.people], vis: form.visAll ? 'all' : [...form.vis]};
   const newInv = entry.people.filter(p => !(form.src && (form.src.who.includes(p) || (form.src.inv || {})[p])));
   commit({op:'put', entry, note:`${P[me].name} ${verb(me, wasEdit ? 'изменил' : 'добавил')}: ${what}, ${r}`, inviteNote:`${P[me].name} зовёт: ${what}, ${r}`});
   closeSheet();
@@ -856,7 +900,9 @@ document.addEventListener('click', ev => {
   if (d.theme){ themeName = d.theme; store(KEYS.theme, themeName); applyTheme(); render(); return; }
   if (d.skin){ skinName = d.skin; store(KEYS.skin, skinName); applySkin(); render(); return; }
   if (d.person){ state.hidden.has(d.person) ? state.hidden.delete(d.person) : state.hidden.add(d.person); render(); return; }
-  if (d.pick){ form.people.has(d.pick) ? form.people.delete(d.pick) : form.people.add(d.pick); $('pick').innerHTML = pickHTML(); return; }
+  if (d.pick){ form.people.has(d.pick) ? form.people.delete(d.pick) : form.people.add(d.pick); $('pick').innerHTML = pickHTML(); $('visPick').innerHTML = visHTML(); return; }
+  if (d.fvis){ form.visAll = d.fvis === 'all'; t.parentNode.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === t)); $('visPick').innerHTML = visHTML(); return; }
+  if (d.vis){ form.vis.has(d.vis) ? form.vis.delete(d.vis) : form.vis.add(d.vis); t.setAttribute('aria-pressed', form.vis.has(d.vis)); return; }
   if (d.ltab){ loginTab = d.ltab; openLogin(); return; }
   if (d.rf){ regF = d.rf === 'f'; t.parentNode.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === t)); return; }
   if (d.rc){ regColor = d.rc; document.querySelectorAll('[data-rc]').forEach(b => b.setAttribute('aria-pressed', b.dataset.rc === regColor)); return; }
@@ -896,6 +942,7 @@ document.addEventListener('click', ev => {
     case 'instHide': store(KEYS.inst, 1); render(); break;
     case 'register': doRegister(); break;
     case 'invite': makeInvite(); break;
+    case 'guide': store('kk-guide', 1); guideOpen = true; state.view = 'set'; render(); scrollTo(0, 0); break;
     case 'shareInvite': navigator.share({title:'Кто когда', text:'Зову в общий календарь «Кто когда»', url:window.__inviteUrl}).catch(() => {}); break;
     case 'acceptInvite': acceptInvite(); break;
     case 'closeSheet': sheetLocked = false; closeSheet(); render(); break;
@@ -914,6 +961,7 @@ document.addEventListener('click', ev => {
   }
 });
 // лёгкая вибрация на нажатие (Android; iPhone из браузера не умеет)
+document.addEventListener('toggle', e => { if (e.target.id === 'guideBox'){ guideOpen = e.target.open; if (guideOpen) store('kk-guide', 1); } }, true);
 document.addEventListener('change', e => { if (e.target.id === 'admLink') store('kk-admlink', e.target.checked); });
 document.addEventListener('pointerdown', e => { if (e.target.closest('button') && navigator.vibrate) try { navigator.vibrate(50); } catch(_){} }, {passive:true});
 
