@@ -265,6 +265,14 @@ input.in:focus{outline:2px solid var(--dim);outline-offset:0}
 .colors{display:flex;flex-wrap:wrap;gap:10px}
 .cl{width:36px;height:36px;border-radius:50%;border:0;background:var(--c)}
 .cl[aria-pressed="true"]{box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--c)}
+.nickin{display:flex;align-items:center;background:var(--field);border-radius:16px;padding-left:14px}
+.nickin span{color:var(--muted);font-weight:600;font-size:16px}
+.nickin .in{background:transparent;padding-left:3px}
+.msgbox{white-space:pre-wrap;word-break:normal;overflow-wrap:anywhere;font-family:inherit;font-size:14px;line-height:1.4;max-height:220px;overflow:auto}
+.todo{margin:14px 0 0;padding-left:22px;display:flex;flex-direction:column;gap:12px}
+.todo li{line-height:1.35}.todo li::marker{font-weight:700;color:var(--muted)}
+.todo b{display:block}.todo span{display:block;color:var(--muted);font-size:13px}
+.todo .lnk{margin-top:6px}.todo .keybox{margin-top:6px;font-size:13px;padding:10px 12px}
 .keybox{background:var(--field);border-radius:14px;padding:13px 14px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:15px;word-break:break-all;-webkit-user-select:all;user-select:all}
 .sheet .seg{width:max-content;max-width:100%}
 #admLink{width:22px;height:22px;flex:none;accent-color:var(--green)}
@@ -441,6 +449,6 @@ body.feed.skin-oneui .hdr{flex-direction:row;align-items:flex-end;gap:10px}
   <div><div class="t1" id="toastT1"></div><div class="t2" id="toastT2"></div></div>
 </div>
 
-<script src="app.js?v=27"></script>
+<script src="app.js?v=28"></script>
 </body>
 </html>

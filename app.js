@@ -754,7 +754,7 @@ function openLogin(msg){
     <label class="f" for="rName">Как вас зовут</label>
     <input class="in" id="rName" maxlength="24" placeholder="Например: Лера">
     <label class="f" for="rNick">Ник — по нему вас найдут</label>
-    <input class="in" id="rNick" maxlength="21" placeholder="@lera" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <div class="nickin"><span>@</span><input class="in" id="rNick" maxlength="20" placeholder="lera" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
     <label class="f">Писать о вас</label>
     ${seg('rf', regF ? 'f' : 'm', [['m','добавил'],['f','добавила']])}
     <label class="f">Ваш цвет</label>
@@ -780,10 +780,13 @@ async function doRegister(){
     auth = {token:r.token, me:nick}; store(KEYS.auth, auth);
     inviteCode = null; sheetLocked = false;
     openSheet(`<h2>Готово, ${esc(name)}!</h2>
-      <div class="hint">Вы и ${esc(inviter.name)} уже видите календари друг друга.</div>
-      ${keyBlock(isIOS && !standalone
-        ? 'Сейчас: Поделиться → «На экран „Домой“», откройте приложение с иконки и войдите этим ключом — на iPhone приложение с экрана не видит вход из Safari.'
-        : 'Сохраните ключ: с ним можно войти на другом телефоне. Он же есть в настройках.')}
+      <div class="hint">Вы и ${esc(inviter.name)} уже видите календари друг друга. Осталось пара шагов:</div>
+      <ol class="todo">
+        <li><b>Сохрани ключ входа</b><div class="keybox" id="keyBox">${esc(auth.token)}</div><button class="lnk press" data-act="copyKey">Скопировать</button></li>
+        <li><b>Установи на экран</b><span>${isIOS ? 'Поделиться → «На экран „Домой“», потом открой с иконки и войди ключом' : 'Chrome → ⋮ → «Установить приложение»'}</span>${!isIOS && installEvt ? '<button class="lnk press" data-act="install">Установить</button>' : ''}</li>
+        <li><b>Включи уведомления</b><span>чтобы видеть, кто что добавил</span><button class="lnk press" data-act="push">Включить</button></li>
+        <li><b>Как это работает</b><span>две минуты</span><button class="lnk press" data-act="guide">Открыть</button></li>
+      </ol>
       <button class="btn press" data-act="closeSheet">Открыть календарь</button>`);
     sync();
   } catch(e){ err.textContent = e.user || 'Нет связи с сервером. Попробуйте позже.'; }
@@ -808,9 +811,21 @@ async function makeInvite(){
   try {
     const {code} = await api('POST', '/invites');
     const url = location.origin + location.pathname.replace(/index\.html$/, '') + '#i=' + code;
+    const me = meInfo ? meInfo.name : '';
+    window.__inviteText = `${me} зовёт в общий календарь «Кто когда» — видно, кто когда занят.
+
+1. Открой ссылку: iPhone — в Safari, Android — в Chrome
+2. Придумай ник и нажми «Присоединиться»
+3. Скопируй ключ входа и сохрани
+4. Установи приложение на экран — подсказка будет внутри
+5. Включи уведомления в Настройках
+6. Загляни в «Как это работает»
+
+Ссылка одноразовая, на 7 дней:
+${url}`;
     window.__inviteUrl = url;
-    openSheet(`<h2>Ссылка-приглашение</h2><div class="hint">Одноразовая, работает 7 дней. Кто откроет — зарегистрируется, и вы сразу увидите календари друг друга.</div>
-      <label class="f">Ссылка</label><div class="keybox" id="keyBox">${esc(url)}</div>
+    openSheet(`<h2>Приглашение</h2><div class="hint">Отправится сообщением с короткой инструкцией. Ссылка одноразовая, работает 7 дней.</div>
+      <label class="f">Сообщение</label><div class="keybox msgbox" id="keyBox">${esc(window.__inviteText)}</div>
       ${navigator.share ? '<button class="btn press" data-act="shareInvite">Отправить</button>' : ''}
       <button class="btn plain press" data-act="copyKey">Скопировать</button>`);
   } catch(e){ toast('Не получилось', e.user || 'Нет связи с сервером'); }
@@ -980,8 +995,8 @@ document.addEventListener('click', ev => {
     case 'instHide': store(KEYS.inst, 1); render(); break;
     case 'register': doRegister(); break;
     case 'invite': makeInvite(); break;
-    case 'guide': store('kk-guide', 1); guideOpen = true; state.view = 'set'; render(); scrollTo(0, 0); break;
-    case 'shareInvite': navigator.share({title:'Кто когда', text:'Зову в общий календарь «Кто когда»', url:window.__inviteUrl}).catch(() => {}); break;
+    case 'guide': sheetLocked = false; closeSheet(); store('kk-guide', 1); guideOpen = true; state.view = 'set'; render(); scrollTo(0, 0); break;
+    case 'shareInvite': navigator.share({title:'Кто когда', text:window.__inviteText}).catch(() => {}); break;
     case 'acceptInvite': acceptInvite(); break;
     case 'closeSheet': sheetLocked = false; closeSheet(); render(); break;
     case 'keyLogin': doKeyLogin(); break;
