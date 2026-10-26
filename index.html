@@ -182,6 +182,15 @@ body.s3 .day.filled:not(.today) .n,body.s3 .md.filled{color:#1C1C1E;text-shadow:
 .seg{display:flex;background:var(--field);border-radius:999px;padding:3px;gap:2px;flex:none}
 .seg button{border:0;background:transparent;border-radius:999px;padding:6px 11px;font-size:13px;font-weight:600;color:var(--muted)}
 .seg button[aria-pressed="true"]{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.guide details{border-bottom:.5px solid var(--line)}
+.guide details:last-child{border-bottom:0}
+.guide summary{list-style:none;cursor:pointer;padding:13px 0;font-weight:600;display:flex;justify-content:space-between;align-items:center}
+.guide summary::-webkit-details-marker{display:none}
+.guide summary::after{content:"";width:8px;height:8px;border-right:2px solid var(--dim);border-bottom:2px solid var(--dim);transform:rotate(45deg);transition:transform .2s;margin-right:4px}
+.guide details[open] summary::after{transform:rotate(-135deg)}
+.gbody{padding:0 0 12px;color:var(--muted);font-size:14px;line-height:1.45;-webkit-user-select:text;user-select:text}
+.gbody p{margin:0 0 8px}
+.gbody b{color:var(--ink)}
 .itv{display:flex;justify-content:center;align-items:center;gap:6px;margin:26px 0 0;color:var(--muted);font-weight:600;letter-spacing:.04em;font-size:14px}
 .itv svg{width:20px;height:20px}
 .sync{position:fixed;top:calc(8px + env(safe-area-inset-top,0px));right:12px;z-index:9;font-size:12px;font-weight:600;color:var(--muted);background:var(--card);border-radius:999px;padding:4px 10px}
@@ -307,42 +316,52 @@ body.skin-oneui .sheet{left:0;right:0;bottom:0;border-radius:26px 26px 0 0;paddi
   -webkit-backdrop-filter:none;backdrop-filter:none;border:0}
 body.skin-oneui .toast{border-radius:22px;background:var(--card);-webkit-backdrop-filter:none;backdrop-filter:none}
 
-/* ===== Мягкий (тонированные поверхности) ===== */
-body.skin-soft{--bg:#F6F2FA;--card:#ECE5F4;--cell:#FFFFFF;--acc:#6750A4;--accInk:#4F378B;--field:rgba(103,80,164,.10);
-  --glass:rgba(236,229,244,.85);--sheet:#F3EDF8;--sel:#D9CBF2;--chipOff:#E6DFEE;--line:rgba(80,60,120,.14);--muted:#615A6E}
-:root.dk body.skin-soft{--bg:#141218;--card:#211F26;--cell:#2B2930;--acc:#CFBCFF;--accInk:#CFBCFF;--field:rgba(207,188,255,.12);
-  --glass:rgba(33,31,38,.85);--sheet:#25232A;--sel:#4A4458;--chipOff:#1A181E;--line:rgba(255,255,255,.08);--muted:#B0A8BE}
-body.skin-soft .hdr{padding-top:24px}
-body.skin-soft .yr{color:var(--accInk)}
-body.skin-soft .gb,body.skin-soft .tabbar,body.skin-soft .fab{border:0;box-shadow:none}
-body.skin-soft .gb{background:var(--card)}
-body.skin-soft .mm{background:var(--card);border-radius:28px;padding:14px 12px}
-body.skin-soft .yg{gap:12px}
-body.skin-soft #vMonth{background:var(--card);border-radius:32px;padding:16px 12px}
-body.skin-soft .strip{margin:0 -12px}
-body.skin-soft .day{border-radius:50%;aspect-ratio:1}
-body.skin-soft .day.filled{border-radius:16px}
-body.skin-soft .day .n{margin-top:auto;margin-bottom:auto}
-body.skin-soft .day.today .n,body.skin-soft .md.today .num{background:var(--acc);color:var(--bg)}
-body.skin-soft .mm.cur .mmh span{color:var(--accInk)}
-body.skin-soft .day.sel{outline-color:var(--acc)}
-body.skin-soft .chip{background:var(--card)}
-body.skin-soft .ev,body.skin-soft .emptyDay{background:var(--cell);border-radius:24px}
-body.skin-soft .inv{background:var(--cell);border-radius:28px}
-body.skin-soft .invB .yes,body.skin-soft .btn.ok,body.skin-soft .btn{background:var(--acc);color:var(--bg)}
-body.skin-soft .set{background:var(--card);border-radius:28px}
-body.skin-soft .seg button[aria-pressed="true"]{background:var(--acc);color:var(--bg);box-shadow:none}
-body.skin-soft .tabbar{background:var(--card);padding:6px}
-body.skin-soft .tab{width:62px;height:44px}
-body.skin-soft .tab[aria-selected="true"]{background:var(--sel);color:var(--accInk)}
-body.skin-soft .fab{background:var(--sel);color:var(--accInk);border-radius:20px}
-body.skin-soft .sheet{background:var(--sheet);border-radius:32px}
+/* лента месяцев */
+#top{position:sticky;top:0;z-index:6;background:color-mix(in srgb,var(--bg) 72%,transparent);-webkit-backdrop-filter:blur(20px) saturate(170%);backdrop-filter:blur(20px) saturate(170%);margin:calc(-1 * env(safe-area-inset-top,0px)) -12px 0;padding:env(safe-area-inset-top,0px) 12px 0}
+#top::after{content:"";position:absolute;left:0;right:0;top:100%;height:18px;pointer-events:none;background:linear-gradient(to bottom,color-mix(in srgb,var(--bg) 60%,transparent),transparent)}
+body.feed .hdr{padding:10px 4px 12px}
+#topWd{padding:0 0 8px}
+body.feed .hdr h1{font-size:30px}
+.mblock{margin-bottom:26px}
+.mtitle{margin:0 4px 10px;font-size:22px;font-weight:700;letter-spacing:-.015em}
+.mtitle small{font-size:15px;color:var(--muted);font-weight:600}
+.mblock.cur .mtitle{color:var(--red)}
+#feed .mblock:first-child .mtitle{display:none}
+body.skin-oneui .mblock.cur .mtitle{color:var(--accInk)}
+body.skin-oneui #vMonth{background:transparent;padding:0}
+body.skin-oneui .mblock{background:var(--card);border-radius:26px;padding:14px 10px 12px}
+body.skin-oneui #feed .mblock:first-child{padding-top:12px}
+body.feed.skin-oneui .hdr{flex-direction:row;align-items:flex-end;gap:10px}
+.mblock .grid > span{aspect-ratio:1/1.14}
+.more{display:block;margin:0 auto 10px;border:0;background:var(--field);border-radius:999px;padding:10px 16px;font-weight:600;font-size:14px;color:var(--muted)}
+.day.free::after,.md.free::after{display:none}
+.sheet .dpHead{margin:0 0 12px}
+.sheet .ev{background:var(--field)}
+.sheet .emptyDay{background:var(--field)}
+/* год: 3 колонки */
+.yg.y3{grid-template-columns:repeat(3,minmax(0,1fr));gap:18px 10px}
+.yg.y3 .mmh{font-size:12.5px;padding-bottom:6px;flex-direction:row;align-items:baseline;gap:4px;overflow:hidden}
+.yg.y3 .mmh small{font-size:10px;color:var(--muted);font-weight:600}
+.yg.y3 .md{font-size:8px;border-radius:3px}
+.yg.y3 .md:not(.filled){background:transparent}
+.yg.y3 .mmgrid{gap:1.5px}
+.yg.y3 .md .bands{gap:.5px}
+.yg.y3 .md .bands i{border-radius:2px}
+.yg.y3 .md.today .num{width:12px;height:12px}
+@media (min-width:540px){.yg.y3{grid-template-columns:repeat(3,minmax(0,1fr))}.yg.y3 .md{font-size:10px}}
+/* цифра дня поверх полос — на плашке, чтобы не сливалась */
+.day{align-items:center}
+.day .n{margin:0;width:30px;height:30px;min-width:0;padding:0;border-radius:50%;line-height:1;font-size:16px}
+.day.filled.over:not(.today) .n,body.s3 .day.filled.over:not(.today) .n{background:none;color:var(--ink);font-weight:700;text-shadow:0 0 1px var(--cell),0 0 2px var(--cell),0 0 3px var(--cell),0 0 4px var(--cell),1px 1px 0 var(--cell),-1px -1px 0 var(--cell),1px -1px 0 var(--cell),-1px 1px 0 var(--cell)}
+.day.filled.sun:not(.today) .n{color:var(--red)}
+.md.filled.over:not(.today) .num,body.s3 .md.filled.over:not(.today) .num{background:none;color:var(--ink);font-weight:700;text-shadow:0 0 1px var(--cell),0 0 2px var(--cell),1px 0 0 var(--cell),-1px 0 0 var(--cell),0 1px 0 var(--cell),0 -1px 0 var(--cell)}
+.md.filled.sun:not(.today) .num{color:var(--red)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
 </style>
 </head>
 <body>
 <div class="app">
-  <header class="hdr">
+  <div id="top"><header class="hdr" id="hdr">
     <div>
       <button class="yr" id="yr" data-act="back">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg><span id="yrText"></span>
@@ -355,31 +374,30 @@ body.skin-soft .sheet{background:var(--sheet);border-radius:32px}
       <button class="gb ic glass press" data-act="next" aria-label="Вперёд"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
     </div>
   </header>
+  <div class="wd" id="topWd" hidden><span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span></div></div>
 
   <div class="invs" id="invs"></div>
   <div class="people" id="people"></div>
 
   <section id="vMonth">
-    <div class="wd"><span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span></div>
-    <div class="strip" id="strip"></div>
-    <div class="legend"><i></i>все отмеченные свободны</div>
-    <div class="dp" id="dayPanel"></div>
+    <div id="feed"></div>
   </section>
 
   <section id="vYear" hidden><div class="yg" id="yearGrid"></div></section>
   <section id="vList" hidden></section>
+  <section id="vSet" hidden></section>
 </div>
 
 <nav class="dock">
   <div class="tabbar glass" role="tablist">
-    <button class="tab press" data-view="four" role="tab" aria-label="4 месяца" title="4 месяца">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="2"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="2"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="2"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="2"/></svg></button>
     <button class="tab press" data-view="month" role="tab" aria-label="Месяц" title="Месяц">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg></button>
     <button class="tab press" data-view="year" role="tab" aria-label="Год" title="Год">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="6" cy="6" r="1.8"/><circle cx="12" cy="6" r="1.8"/><circle cx="18" cy="6" r="1.8"/><circle cx="6" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="18" cy="12" r="1.8"/><circle cx="6" cy="18" r="1.8"/><circle cx="12" cy="18" r="1.8"/><circle cx="18" cy="18" r="1.8"/></svg></button>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5.5" cy="5.5" r="2.3"/><circle cx="12" cy="5.5" r="2.3"/><circle cx="18.5" cy="5.5" r="2.3"/><circle cx="5.5" cy="12" r="2.3"/><circle cx="12" cy="12" r="2.3"/><circle cx="18.5" cy="12" r="2.3"/><circle cx="5.5" cy="18.5" r="2.3"/><circle cx="12" cy="18.5" r="2.3"/><circle cx="18.5" cy="18.5" r="2.3"/></svg></button>
     <button class="tab press" data-view="list" role="tab" aria-label="Ближайшее" title="Ближайшее">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6.5h11M9 12h11M9 17.5h11"/><circle cx="4.6" cy="6.5" r="1.2" fill="currentColor"/><circle cx="4.6" cy="12" r="1.2" fill="currentColor"/><circle cx="4.6" cy="17.5" r="1.2" fill="currentColor"/></svg></button>
+    <button class="tab press" data-view="set" role="tab" aria-label="Настройки" title="Настройки">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
   </div>
   <button class="fab glass press" data-act="add" aria-label="Добавить дело">
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>

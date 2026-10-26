@@ -218,13 +218,16 @@ function announce(prev){
 
 /* ---------- вид ---------- */
 const state = { y:TODAY.getFullYear(), m:TODAY.getMonth(), sy:TODAY.getFullYear(), sm:TODAY.getMonth(), sel:TODAY_K,
-                view:'four', hidden:new Set(), extra:0 };
-const MULTI = {four:4, year:12};
-const MULTI_T = {four:'4 месяца', year:'Год'};
-const isMulti = v => v in MULTI;
+                view:'month', hidden:new Set(), extra:0 };
+const isMulti = v => v === 'year';
+// «Год»: сетка 3×4 — 12 месяцев от текущего; если дела дальше — до месяца с последним делом (целыми рядами)
+function yearSpan(){
+  let last = CUR() + 11;
+  for (const e of entries){ const d = parse(e.to); last = Math.max(last, mIdx(d.getFullYear(), d.getMonth())); }
+  return Math.ceil((last - CUR() + 1) / 3) * 3;
+}
 
-let styleName = load(KEYS.style, 's1');
-if (!['s1','s2','s3'].includes(styleName)) styleName = 's1';
+const styleName = 's3'; // полосы: пастель (выбор пока убран)
 function applyStyle(){ document.body.classList.remove('s1','s2','s3'); document.body.classList.add(styleName); }
 applyStyle();
 
@@ -237,10 +240,10 @@ function applyTheme(){
   const bg = getComputedStyle(document.body).backgroundColor;
   document.querySelectorAll('meta[name=theme-color]').forEach(m => m.content = bg);
 }
-// оформление (iOS / One UI / Мягкий) и раскладка обзора (2×2 / столбик)
-const SKINS = [['ios','iOS'],['oneui','One UI'],['soft','Мягкий']];
+// оформление (iOS / One UI); обзор года — столбиком
+const SKINS = [['ios','iOS'],['oneui','One UI']];
 let skinName = load(KEYS.skin, 'ios'); if (!SKINS.some(x => x[0] === skinName)) skinName = 'ios';
-let layName = load(KEYS.lay, 'grid'); if (!['grid','col'].includes(layName)) layName = 'grid';
+const layName = 'col'; // обзор года — всегда столбиком
 function applySkin(){
   SKINS.forEach(([k]) => document.body.classList.toggle('skin-' + k, k === skinName));
   document.body.classList.toggle('lay-col', layName === 'col');
@@ -287,75 +290,71 @@ function renderInvites(){
     <div style="min-width:0"><div class="who">Стучится к вам</div><div class="what">${esc(P[id].name)}</div><div class="meta">@${id}</div></div>
     <div class="invB"><button class="yes press" data-link="${id}" data-la="accept">Принять</button><button class="no press" data-link="${id}" data-la="drop">Нет</button></div></div>`).join('');
   const np = users.filter(u => u.status === 'pending').length;
-  const adm = np && state.view !== 'list' ? `<div class="inv" style="--c:#FF9F0A"><div style="min-width:0"><div class="who">Разработчику</div><div class="what">Новых заявок: ${np}</div></div>
-    <div class="invB"><button class="yes press" data-view="list">Открыть</button></div></div>` : '';
-  $('invs').innerHTML = (state.view === 'month' ? '' : installCardHTML()) + adm + knocks + list.map(e => { const by = owner(e); return `<div class="inv" style="--c:${P[by].color}">
+  const adm = np && state.view !== 'set' ? `<div class="inv" style="--c:#FF9F0A"><div style="min-width:0"><div class="who">Разработчику</div><div class="what">Новых заявок: ${np}</div></div>
+    <div class="invB"><button class="yes press" data-view="set">Открыть</button></div></div>` : '';
+  $('invs').innerHTML = (state.view === 'set' ? '' : installCardHTML() + adm + knocks) + (state.view === 'set' ? [] : list).map(e => { const by = owner(e); return `<div class="inv" style="--c:${P[by].color}">
     <div style="min-width:0"><div class="who">${esc(P[by].name)} зовёт</div><div class="what">${esc(e.what)}</div><div class="meta">${fmtRange(e.from,e.to)}</div></div>
     <div class="invB"><button class="yes press" data-rsvp="${e.id}" data-ans="yes">Иду</button><button class="no press" data-rsvp="${e.id}" data-ans="no">Не иду</button></div></div>`; }).join('');
   $('invs').hidden = !$('invs').innerHTML;
 }
 
-// лента месяцев: от текущего (или выбранного) до последнего запланированного дела
+// главный экран: месяцы друг под другом, от текущего до месяца с последним делом
 function monthRange(){
   const cur = CUR(), target = mIdx(state.y, state.m);
-  let last = cur + 3;
+  let last = cur + 1;
   for (const e of entries){ const d = parse(e.to); last = Math.max(last, mIdx(d.getFullYear(), d.getMonth())); }
   return [Math.min(cur, target), Math.max(last, target) + state.extra];
 }
-function panelHTML(y, m, map, V){
+const WD = '<div class="wd"><span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span></div>';
+function blockHTML(y, m, map, V){
   const offset = (new Date(y,m,1).getDay()+6)%7, dim = new Date(y,m+1,0).getDate();
-  const cells = 42; // всегда 6 недель — лента не прыгает по высоте
-  let h = '';
-  for (let i=0; i<cells; i++){
-    const d = new Date(y,m,1-offset+i), k = key(d), b = map[k] || {};
+  let h = '<span></span>'.repeat(offset);
+  for (let dd=1; dd<=dim; dd++){
+    const d = new Date(y,m,dd), k = key(d), b = map[k] || {};
     const busy = V.filter(p => b[p.id]);
-    const free = V.length > 0 && !busy.length;
-    const out = d.getMonth() !== m;
-    const cls = ['day press', out && 'out', k<TODAY_K && 'past', k===TODAY_K && 'today', !out && k===state.sel && 'sel',
-                 free && 'free', busy.length && 'filled', i%7===6 && 'sun'].filter(Boolean).join(' ');
-    const lbl = `${d.getDate()} ${MONTHS_G[d.getMonth()]}${busy.length ? ', заняты: '+joinNames(busy.map(p=>p.id)) : free ? ', все свободны' : ''}`;
-    h += `<button class="${cls}" data-day="${k}" aria-label="${lbl}">${bands(busy)}<span class="n">${d.getDate()}</span></button>`;
+    const dow = (offset + dd - 1) % 7;
+    const cls = ['day press', k<TODAY_K && 'past', k===TODAY_K && 'today', k===state.sel && 'sel', busy.length && 'filled', busy.length > 1 && 'over', dow===6 && 'sun'].filter(Boolean).join(' ');
+    const lbl = `${dd} ${MONTHS_G[m]}${busy.length ? ', заняты: '+joinNames(busy.map(p=>p.id)) : ''}`;
+    h += `<button class="${cls}" data-day="${k}" aria-label="${lbl}">${bands(busy)}<span class="n">${dd}</span></button>`;
   }
-  return `<div class="mpanel" data-mi="${mIdx(y,m)}"><div class="grid">${h}</div></div>`;
+  const cur = mIdx(y,m) === CUR();
+  return `<section class="mblock${cur ? ' cur' : ''}" data-mi="${mIdx(y,m)}"><h3 class="mtitle">${MONTHS[m]}${y !== TODAY.getFullYear() ? ` <small>${y}</small>` : ''}</h3><div class="grid">${h}</div></section>`;
 }
 let range = [0,0];
-function renderMonth(){
+function renderMonth(scrollTo){
   const map = busyMap(), V = vis();
   range = monthRange();
   let h = '';
-  for (let i = range[0]; i <= range[1]; i++) h += panelHTML(Math.floor(i/12), i%12, map, V);
-  const s = $('strip');
-  s.innerHTML = h;
-  s.scrollLeft = (mIdx(state.y,state.m) - range[0]) * s.clientWidth;
+  for (let i = range[0]; i <= range[1]; i++) h += blockHTML(Math.floor(i/12), i%12, map, V);
+  h += `<button class="more press" data-act="more">Показать ещё месяц</button>`;
+  $('feed').innerHTML = h;
   monthHead();
-  renderDay();
+  if (scrollTo !== undefined) requestAnimationFrame(() => goMonth(scrollTo, false));
 }
 function monthHead(){
   $('yrText').textContent = state.y;
   $('title').textContent = MONTHS[state.m];
 }
-// пролистали ленту — обновить заголовок и выбранный день
-let scrollT;
-function onStripScroll(){
-  clearTimeout(scrollT);
-  scrollT = setTimeout(() => {
-    const s = $('strip'), w = s.clientWidth; if (!w) return;
-    const i = range[0] + Math.round(s.scrollLeft / w);
-    if (i === mIdx(state.y, state.m)) return;
-    state.y = Math.floor(i/12); state.m = i%12;
-    const sd = parse(state.sel);
-    if (mIdx(sd.getFullYear(), sd.getMonth()) !== i) state.sel = i === CUR() ? TODAY_K : key(new Date(state.y, state.m, 1));
-    markSel(); monthHead(); renderDay();
-  }, 90);
-}
-function markSel(){
-  document.querySelectorAll('#strip .day.sel').forEach(b => b.classList.remove('sel'));
-  document.querySelectorAll(`#strip .day[data-day="${state.sel}"]:not(.out)`).forEach(b => b.classList.add('sel'));
+// какой месяц сейчас под шапкой
+function onFeedScroll(){
+  if (state.view !== 'month') return;
+  const top = $('top').getBoundingClientRect().bottom + 8;
+  let cur = null;
+  for (const b of document.querySelectorAll('.mblock')) { if (b.getBoundingClientRect().top <= top) cur = b; else break; }
+  const i = cur ? +cur.dataset.mi : range[0];
+  if (i === mIdx(state.y, state.m)) return;
+  state.y = Math.floor(i/12); state.m = i%12; monthHead();
 }
 function goMonth(i, smooth){
-  if (i < range[0] || i > range[1]){ state.y = Math.floor(i/12); state.m = i%12; if (i > range[1]) state.extra += i - range[1]; render(); return; }
-  const s = $('strip');
-  s.scrollTo({left:(i - range[0]) * s.clientWidth, behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto'});
+  if (i < range[0] || i > range[1]){ if (i > range[1]) state.extra += i - range[1]; state.y = Math.floor(i/12); state.m = i%12; renderMonth(); }
+  const b = document.querySelector(`.mblock[data-mi="${i}"]`); if (!b) return;
+  const y = i === range[0] ? 0 : b.getBoundingClientRect().top + scrollY - $('top').offsetHeight - 4;
+  scrollTo({top:y, behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto'});
+  state.y = Math.floor(i/12); state.m = i%12; monthHead();
+}
+function markSel(){
+  document.querySelectorAll('#feed .day.sel').forEach(b => b.classList.remove('sel'));
+  document.querySelectorAll(`#feed .day[data-day="${state.sel}"]`).forEach(b => b.classList.add('sel'));
 }
 
 function evHTML(e){
@@ -367,8 +366,10 @@ function evHTML(e){
     <span style="min-width:0"><div class="what">${esc(e.what)}</div><div class="meta">${joinNames(e.who)}${w.length ? ` · ждём: ${joinNames(w)}` : ''}, ${fmtRange(e.from,e.to)}</div></span>
     ${mine ? `<svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>` : ''}</button>`;
 }
-function renderDay(){
-  const k = state.sel, d = parse(k);
+// дела дня — в шторке
+function openDay(k){
+  state.sel = k; markSel();
+  const d = parse(k);
   const list = entries.filter(e => e.from <= k && e.to >= k).sort((a,b) => a.from.localeCompare(b.from));
   const busy = new Set(list.flatMap(e => e.who));
   const free = PEOPLE.filter(p => !busy.has(p.id));
@@ -377,7 +378,8 @@ function renderDay(){
     h += list.map(evHTML).join('');
     if (free.length) h += `<div class="freeLine">Свободны: <b>${joinNames(free.map(p=>p.id))}</b></div>`;
   } else h += `<div class="emptyDay">В этот день никто ничего не запланировал.</div>`;
-  $('dayPanel').innerHTML = h;
+  h += `<button class="btn press" data-act="add">+ Дело на этот день</button>`;
+  openSheet(h);
 }
 
 function renderMulti(n){
@@ -393,18 +395,18 @@ function renderMulti(n){
       const free = V.length > 0 && !busy.length;
       if (free && k >= TODAY_K) freeCount++;
       const dow = (offset + dd - 1) % 7;
-      const cls = ['md', busy.length && 'filled', free && 'free', k===TODAY_K && 'today', k<TODAY_K && 'pastd', dow===6 && 'sun'].filter(Boolean).join(' ');
+      const cls = ['md', busy.length && 'filled', busy.length > 1 && 'over', k===TODAY_K && 'today', k<TODAY_K && 'pastd', dow===6 && 'sun'].filter(Boolean).join(' ');
       cells += `<button class="${cls}" data-date="${k}" aria-label="${dd} ${MONTHS_G[m]}">${bands(busy)}<span class="num">${dd}</span></button>`;
     }
     const pastM = new Date(y,m+1,0) < TODAY;
     const cur = y === TODAY.getFullYear() && m === TODAY.getMonth();
     const yl = y !== TODAY.getFullYear() ? ` ${y}` : '';
     h += `<div class="mm${cur?' cur':''}${pastM?' past':''}">
-      <button class="mmh" data-ym="${y}-${m}"><span>${MONTHS[m]}${yl}</span>${pastM ? '' : `<small>${freeCount} ${plural(freeCount,'свободный','свободных','свободных')}</small>`}</button>
+      <button class="mmh" data-ym="${y}-${m}"><span>${MONTHS[m]}</span>${yl ? `<small>${y}</small>` : ''}</button>
       <div class="mmgrid">${cells}</div></div>`;
   }
   const g = $('yearGrid');
-  g.className = 'yg' + (n <= 4 ? ' big' : '');
+  g.className = 'yg y3'; // год: сетка 3 колонки
   g.innerHTML = h;
   const ey = state.sy + Math.floor((state.sm + n - 1)/12), em = (state.sm + n - 1) % 12;
   return `${MONTHS_G[state.sm].slice(0,3)} ${state.sy} – ${MONTHS_G[em].slice(0,3)} ${ey}`;
@@ -449,7 +451,7 @@ function installCardHTML(){
 }
 function openHowto(){
   if (standalone) return toast('Установка', 'Приложение уже установлено');
-  store(KEYS.inst, 0); state.view = 'four'; render(); window.scrollTo({top:0, behavior:'smooth'});
+  store(KEYS.inst, 0); state.view = 'month'; render(); window.scrollTo({top:0, behavior:'smooth'});
 }
 async function doInstall(){
   if (!installEvt) return openHowto();
@@ -465,8 +467,7 @@ function settingsHTML(){
     <div class="setRow"><div class="k">Тема</div>${seg('theme', themeName, [['auto','Авто'],['light','Светлая'],['dark','Тёмная']])}</div>
     <div class="setRow"><div><div class="k">Установка на телефон</div><div class="v">${standalone ? 'Установлено' : 'Инструкция для iPhone и Android'}</div></div><button class="lnk press" data-act="howto">Как</button></div>
     <div class="setRow"><div class="k">Стиль</div>${seg('skin', skinName, SKINS)}</div>
-    <div class="setRow"><div class="k">Обзор</div>${seg('lay', layName, [['grid','2×2'],['col','Столбик']])}</div>
-    <div class="setRow"><div class="k">Полосы</div>${seg('style', styleName, [['s1','Стекло'],['s2','Матовый'],['s3','Пастель']])}</div>`;
+`;
   if (!ONLINE) h += `<div class="setRow"><div><div class="k">Демо-режим · вы — ${P[ME()].name}</div><div class="v">Данные только на этом устройстве</div></div><button class="lnk press" data-act="reset">Сбросить</button></div>`;
   else if (meInfo) {
     const pushNote = pushOn ? 'Приглашения, запросы и дела ваших связей'
@@ -513,33 +514,60 @@ function renderList(){
                  : `<div class="empty">В ближайшие два месяца нет дней, когда свободны все.</div>`;
   h += `<div class="sec">Дела по порядку</div>`;
   h += up.length ? up.map(evHTML).join('') : `<div class="empty">Пока никто ничего не запланировал.</div>`;
-  h += peopleHTML();
-  if (meInfo && meInfo.admin) h += adminHTML();
-  h += settingsHTML();
   $('vList').innerHTML = h;
 }
+function renderSet(){
+  let h = peopleHTML().replace('style="margin-top:28px"', '');
+  if (meInfo && meInfo.admin) h += adminHTML();
+  h += `<div class="sec" style="margin-top:28px">Приложение</div>` + settingsHTML().replace(/<p class="itv">[\s\S]*$/, '');
+  h += guideHTML();
+  h += `<p class="itv"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h12M9 4v16" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" fill="none"/><path d="M12 8l4.5 12L21 8" stroke="#FF2E93" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>itivan</p>`;
+  $('vSet').innerHTML = h;
+}
+const GUIDE = [
+  ['Как читать календарь', `<p>Каждый человек — свой цвет. Цветная полоса в дне — этот человек занят. Зелёная точка — в этот день свободны все, кого вы видите.</p>
+    <p>Кружки с именами сверху — фильтр: нажмите, чтобы скрыть или вернуть человека.</p>`],
+  ['Месяц и Год', `<p><b>Месяц</b> — главный экран. Листайте пальцем влево-вправо, нажмите на день, чтобы увидеть дела под календарём. Красная стрелка с годом слева вверху ведёт в «Год».</p>
+    <p><b>Год</b> — все месяцы столбиком до последнего запланированного дела. Нажмите на месяц или день, чтобы открыть его крупно.</p>`],
+  ['Своё дело', `<p>Кнопка <b>+</b> — новое дело: что, с какого по какое число. Занятым будете вы.</p>
+    <p>Можно <b>позвать</b> людей из ваших связей — им придёт приглашение «Иду / Не иду». Пока не ответили, их полоса не рисуется.</p>
+    <p>Менять и удалять дело может только тот, кто его создал. Чужое дело открывается на просмотр.</p>`],
+  ['Ближайшее', `<p>Свободные дни, когда не занят никто, и список всех дел по порядку. Нажмите на свободный промежуток — откроется этот месяц.</p>`],
+  ['Люди и приглашения', `<p>Новые люди попадают сюда <b>только по ссылке-приглашению</b>: Настройки → Люди → Пригласить. Ссылка одноразовая и работает 7 дней. Кто по ней зарегистрируется — сразу видит ваш календарь, а вы его.</p>
+    <p>Кто уже есть в приложении — можно <b>постучаться</b> по точному @нику. Человек примет запрос, и вы увидите календари друг друга. «Убрать» разрывает связь для обоих.</p>`],
+  ['Уведомления', `<p>Настройки → Уведомления → Включить. Приходят приглашения, ответы на них, запросы в связи и, если включено, новые дела ваших связей.</p>
+    <p>На iPhone уведомления работают только в приложении, установленном на экран «Домой».</p>`],
+  ['Второй телефон и ключ', `<p>Настройки → Ключ входа → скопируйте. На другом телефоне: «У меня есть ключ» и вставьте. Ключ — как пароль: никому не пересылайте.</p>
+    <p>На iPhone приложение с экрана «Домой» не видит вход из Safari — войдите в нём ключом ещё раз.</p>`]
+];
+const guideHTML = () => `<div class="sec" style="margin-top:28px">Как это работает</div><div class="set guide">${GUIDE.map(([t, b]) =>
+  `<details><summary>${t}</summary><div class="gbody">${b}</div></details>`).join('')}</div>`;
 
 function render(){
-  const v = state.view, multi = isMulti(v);
+  const v = state.view, multi = isMulti(v), plain = v === 'list' || v === 'set';
   $('vMonth').hidden = v !== 'month';
   document.body.classList.toggle('multi', multi);
+  document.body.classList.add('feed'); // одна и та же закреплённая шапка на всех вкладках
+  $('topWd').hidden = v !== 'month';
   $('vYear').hidden = !multi;
   $('vList').hidden = v !== 'list';
-  $('people').hidden = v === 'list';
-  $('hb').style.visibility = v === 'list' ? 'hidden' : 'visible';
-  $('yr').style.visibility = v === 'list' ? 'hidden' : 'visible';
+  $('vSet').hidden = v !== 'set';
+  $('people').hidden = plain;
+  $('hb').style.visibility = v === 'month' ? 'visible' : 'hidden';
+  $('yr').style.visibility = plain ? 'hidden' : 'visible';
   $('yr').querySelector('svg').style.display = v === 'month' ? '' : 'none';
   document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.view === v));
   renderInvites();
-  if (v !== 'list') renderPeople();
+  if (!plain) renderPeople();
   if (v === 'month') renderMonth();
-  else if (multi){ $('title').textContent = MULTI_T[v]; $('yrText').textContent = renderMulti(MULTI[v]); }
-  else { $('title').textContent = 'Ближайшее'; renderList(); }
+  else if (multi){ state.sy = TODAY.getFullYear(); state.sm = TODAY.getMonth(); $('title').textContent = 'Год'; $('yrText').textContent = renderMulti(yearSpan()); }
+  else if (v === 'list'){ $('title').textContent = 'Ближайшее'; renderList(); }
+  else { $('title').textContent = 'Настройки'; renderSet(); }
 }
 function openMonth(i, sel){
   state.y = Math.floor(i/12); state.m = i%12; state.extra = 0;
   state.sel = sel || (i === CUR() ? TODAY_K : key(new Date(state.y, state.m, 1)));
-  state.view = 'month'; render(); window.scrollTo(0,0);
+  state.view = 'month'; render(); requestAnimationFrame(() => goMonth(i, false));
 }
 
 /* ---------- шторка ---------- */
@@ -579,7 +607,7 @@ function openForm(e, date){
 function pickHTML(){
   const me = ME();
   const fr = PEOPLE.filter(p => p.id !== me && links.friends.includes(p.id));
-  if (!fr.length) return '<div class="hint" style="margin:0">Позвать можно тех, с кем есть связь. Добавьте людей во вкладке «Ближайшее» → Люди.</div>';
+  if (!fr.length) return '<div class="hint" style="margin:0">Позвать можно тех, с кем есть связь. Добавьте людей в Настройках → Люди.</div>';
   return fr.map(p => {
     const on = form.people.has(p.id), st = on && form.src ? statusOf(form.src, p.id) : '';
     return `<button type="button" class="chip press" style="--c:${p.color}" data-pick="${p.id}" aria-pressed="${on}"><span class="dot"></span>${esc(p.name)}${on ? ` <small>${st || 'позовём'}</small>` : ''}</button>`;
@@ -827,8 +855,6 @@ document.addEventListener('click', ev => {
   const d = t.dataset;
   if (d.theme){ themeName = d.theme; store(KEYS.theme, themeName); applyTheme(); render(); return; }
   if (d.skin){ skinName = d.skin; store(KEYS.skin, skinName); applySkin(); render(); return; }
-  if (d.lay){ layName = d.lay; store(KEYS.lay, layName); applySkin(); render(); return; }
-  if (d.style){ styleName = d.style; store(KEYS.style, styleName); applyStyle(); render(); return; }
   if (d.person){ state.hidden.has(d.person) ? state.hidden.delete(d.person) : state.hidden.add(d.person); render(); return; }
   if (d.pick){ form.people.has(d.pick) ? form.people.delete(d.pick) : form.people.add(d.pick); $('pick').innerHTML = pickHTML(); return; }
   if (d.ltab){ loginTab = d.ltab; openLogin(); return; }
@@ -837,13 +863,7 @@ document.addEventListener('click', ev => {
   if (d.link){ linkAction(d.link, d.la); return; }
   if (d.adm){ if (d.aa === 'reject' && t.dataset.sure !== '1'){ t.dataset.sure = '1'; t.textContent = 'Точно?'; return; } adminAction(d.adm, d.aa); return; }
   if (d.rsvp){ rsvp(d.rsvp, d.ans); return; }
-  if (d.day){ // день в ленте месяцев
-    const dt = parse(d.day), i = mIdx(dt.getFullYear(), dt.getMonth());
-    state.sel = d.day;
-    if (i !== mIdx(state.y, state.m)){ goMonth(i, true); setTimeout(() => { state.sel = d.day; markSel(); renderDay(); }, 400); }
-    markSel(); renderDay();
-    return;
-  }
+  if (d.day){ openDay(d.day); return; }
   if (d.date){ const dt = parse(d.date); openMonth(mIdx(dt.getFullYear(), dt.getMonth()), d.date); return; }
   if (d.open){ const e = entries.find(x => x.id === d.open); if (!e) return; owner(e) === ME() ? openForm(e) : openView(e); return; }
   if (d.view){
@@ -857,16 +877,16 @@ document.addEventListener('click', ev => {
   switch (d.act){
     case 'prev': case 'next': {
       const n = d.act === 'next' ? 1 : -1;
-      if (isMulti(state.view)){ shiftMulti(n); render(); }
-      else goMonth(mIdx(state.y, state.m) + n, true);
+      if (state.view === 'month') goMonth(mIdx(state.y, state.m) + n, true);
       break;
     }
+    case 'more': state.extra++; renderMonth(); break;
     case 'today':
-      if (state.view === 'month'){ state.sel = TODAY_K; goMonth(CUR(), true); markSel(); renderDay(); }
+      if (state.view === 'month'){ state.sel = TODAY_K; goMonth(CUR(), true); markSel(); }
       else { state.sy = TODAY.getFullYear(); state.sm = TODAY.getMonth(); render(); }
       break;
-    case 'back': if (state.view === 'month'){ state.sy = TODAY.getFullYear(); state.sm = TODAY.getMonth(); state.view = 'four'; render(); window.scrollTo(0,0); } break;
-    case 'add': openForm(null, state.view === 'month' ? state.sel : null); break;
+    case 'back': if (state.view === 'month'){ state.view = 'year'; render(); window.scrollTo(0,0); } break;
+    case 'add': openForm(null, $('sheet').classList.contains('open') || state.view === 'month' ? state.sel : null); break;
     case 'save': saveForm(); break;
     case 'delete': deleteForm(); break;
     case 'reset': entries = demo(); store(KEYS.demo, entries); render(); toast('Готово', 'Тестовые данные восстановлены'); break;
@@ -897,20 +917,7 @@ document.addEventListener('click', ev => {
 document.addEventListener('change', e => { if (e.target.id === 'admLink') store('kk-admlink', e.target.checked); });
 document.addEventListener('pointerdown', e => { if (e.target.closest('button') && navigator.vibrate) try { navigator.vibrate(50); } catch(_){} }, {passive:true});
 
-function shiftMulti(dir){
-  const t = state.sy*12 + state.sm + MULTI[state.view] * dir;
-  state.sy = Math.floor(t/12); state.sm = ((t%12)+12)%12;
-}
-$('strip').addEventListener('scroll', onStripScroll, {passive:true});
-addEventListener('resize', () => { if (state.view === 'month'){ const s = $('strip'); s.scrollLeft = (mIdx(state.y,state.m) - range[0]) * s.clientWidth; } });
-// свайп на экранах «4 месяца» и «Год»
-{ let sx = null, sy = null; const g = $('yearGrid');
-  g.addEventListener('touchstart', e => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, {passive:true});
-  g.addEventListener('touchend', e => {
-    if (sx === null) return;
-    const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy; sx = null;
-    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)){ shiftMulti(dx < 0 ? 1 : -1); render(); }
-  }); }
+addEventListener('scroll', onFeedScroll, {passive:true});
 
 /* ---------- запуск ---------- */
 if (!ONLINE){ const b = document.createElement('button'); b.id = 'skinBtn'; b.className = 'skinBtn press'; b.dataset.act = 'skinNext'; document.body.appendChild(b); }
