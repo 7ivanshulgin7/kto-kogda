@@ -242,11 +242,25 @@ label.f{display:block;font-size:13px;font-weight:600;color:var(--muted);margin:1
 .row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
 .dbtn{width:100%;border:0;background:var(--field);border-radius:16px;padding:13px 14px;color:var(--ink);font-weight:500;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:15px}
 .dbtn.on{box-shadow:inset 0 0 0 2px var(--dim)}
-.wheel{position:relative;display:grid;grid-template-columns:0.8fr 1.6fr 1fr;height:190px;margin-top:12px;border-radius:18px;background:var(--field);overflow:hidden;
+.wheel{position:relative;display:grid;grid-template-columns:1.6fr 1fr;height:190px;margin-top:12px;border-radius:18px;background:var(--field);overflow:hidden;
   -webkit-mask-image:linear-gradient(transparent,#000 28%,#000 72%,transparent);mask-image:linear-gradient(transparent,#000 28%,#000 72%,transparent)}
 .wcol{overflow-y:auto;scroll-snap-type:y mandatory;padding-block:76px;scrollbar-width:none;overscroll-behavior:contain;position:relative;z-index:1}
 .wcol::-webkit-scrollbar{display:none}
 .wi{height:38px;display:grid;place-items:center;scroll-snap-align:center;font-size:19px;font-weight:600;font-variant-numeric:tabular-nums}
+.wheel.time{grid-template-columns:1fr 1fr}
+.wi small{font-size:12px;color:var(--muted);font-weight:600;margin-left:5px}
+.wcol[data-col="d"] .wi{display:flex;align-items:baseline;justify-content:center;gap:6px}
+.wcol[data-col="d"] .dw{margin:0;min-width:18px;text-align:left}
+.wi.we .dw,.wi.we .dn{color:var(--red)}
+.wi.dis{opacity:.25}
+.runs{display:flex;flex-wrap:wrap;gap:6px}.runs span{background:var(--field);border-radius:999px;padding:7px 12px;font-weight:600;font-size:14px}
+#pickBar{position:fixed;left:12px;right:12px;bottom:calc(86px + env(safe-area-inset-bottom,0px));z-index:12;margin:0 auto;max-width:520px;
+  display:flex;align-items:center;gap:8px;padding:8px 8px 8px 16px;border-radius:999px}
+#pickN{flex:1;font-weight:600;font-size:14px}
+#pickBar .lnk{padding:9px 14px}
+.day.picked{outline:3px solid var(--ink);outline-offset:-3px}
+.day.picked::before{content:"✓";position:absolute;top:4px;right:6px;z-index:2;font-size:11px;font-weight:800;color:var(--ink)}
+body.picking .fab,body.picking .tabbar{opacity:.35;pointer-events:none}
 .wband{position:absolute;left:8px;right:8px;top:76px;height:38px;border-radius:11px;background:var(--card);box-shadow:0 1px 3px rgba(0,0,0,.08);z-index:0}
 input.in{width:100%;border:0;background:var(--field);border-radius:16px;padding:13px 14px;font-weight:500;min-width:0}
 input.in:focus{outline:2px solid var(--dim);outline-offset:0}
@@ -265,6 +279,8 @@ input.in:focus{outline:2px solid var(--dim);outline-offset:0}
 .colors{display:flex;flex-wrap:wrap;gap:10px}
 .cl{width:36px;height:36px;border-radius:50%;border:0;background:var(--c)}
 .cl[aria-pressed="true"]{box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--c)}
+.tsel{border:0;background:var(--field);border-radius:12px;padding:8px 10px;font:inherit;font-size:14px;font-weight:600;color:var(--ink)}
+.tsel:disabled{opacity:.4}
 .nickin{display:flex;align-items:center;background:var(--field);border-radius:16px;padding-left:14px}
 .nickin span{color:var(--muted);font-weight:600;font-size:16px}
 .nickin .in{background:transparent;padding-left:3px}
@@ -441,6 +457,7 @@ body.feed.skin-oneui .hdr{flex-direction:row;align-items:flex-end;gap:10px}
   </button>
 </nav>
 
+<div id="pickBar" class="glass" hidden><span id="pickN"></span><button class="lnk press" data-act="pickCancel">Отмена</button><button class="lnk on press" data-act="pickSave">Записать</button></div>
 <div class="sync" id="sync" hidden></div>
 <div class="backdrop" id="backdrop"></div>
 <div class="sheet" id="sheet" role="dialog" aria-modal="true"><div class="grab"></div><div id="sheetBody"></div></div>
@@ -449,6 +466,6 @@ body.feed.skin-oneui .hdr{flex-direction:row;align-items:flex-end;gap:10px}
   <div><div class="t1" id="toastT1"></div><div class="t2" id="toastT2"></div></div>
 </div>
 
-<script src="app.js?v=28"></script>
+<script src="app.js?v=31"></script>
 </body>
 </html>

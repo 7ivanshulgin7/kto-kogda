@@ -64,10 +64,11 @@ function mergePut(prev, req, by){
   const who = [by], inv = {};
   for (const p of people){
     if (prev && prev.who.includes(p)) who.push(p);
-    else inv[p] = (prev && prev.inv && prev.inv[p]) || 'wait';
+    else inv[p] = (prev && prev.inv && prev.inv[p] !== 'ask' && prev.inv[p]) || 'wait';
   }
+  for (const [p, st] of Object.entries((prev && prev.inv) || {})) if (st === 'ask' && !(p in inv) && !who.includes(p)) inv[p] = 'ask';
   const vis = Array.isArray(req.vis) ? req.vis.filter(p => p !== by) : 'all';
-  return {id:req.id, by, what:req.what, from:req.from, to:req.to, who, inv, vis, ts:Date.now()};
+  return {id:req.id, by, what:req.what, from:req.from, to:req.to, who, inv, vis, tf:req.tf || '', tt:req.tt || '', noRem:!!req.noRem, ts:Date.now()};
 }
 function applyOp(list, op){
   const i = list.findIndex(e => e.id === (op.entry ? op.entry.id : op.id));
@@ -86,6 +87,13 @@ function applyOp(list, op){
     let who = prev.who.filter(w => w !== p);
     if (op.ans === 'yes'){ who.push(p); delete inv[p]; } else inv[p] = 'no';
     out[i] = {...prev, who, inv, ts:Date.now()};
+  } else if (op.op === 'ask'){
+    if (!prev || owner(prev) === op.by || prev.who.includes(op.by)) return list;
+    out[i] = {...prev, inv:{...(prev.inv || {}), [op.by]:'ask'}, ts:Date.now()};
+  } else if (op.op === 'answer'){
+    if (!prev || owner(prev) !== op.by || (prev.inv || {})[op.who] !== 'ask') return list;
+    const inv = {...prev.inv}; delete inv[op.who];
+    out[i] = {...prev, who: op.ans === 'yes' ? [...prev.who, op.who] : prev.who, inv, ts:Date.now()};
   }
   return out;
 }
@@ -178,6 +186,8 @@ async function sync(){
       try {
         if (op.op === 'put') await api('PUT', '/entries/' + op.entry.id, {entry:op.entry});
         else if (op.op === 'del') await api('DELETE', '/entries/' + op.id);
+        else if (op.op === 'ask') await api('POST', `/entries/${op.id}/ask`);
+        else if (op.op === 'answer') await api('POST', `/entries/${op.id}/answer`, {who:op.who, ans:op.ans});
         else await api('POST', `/entries/${op.id}/rsvp`, {ans:op.ans});
       } catch(e){ if (!(e.status >= 400 && e.status < 500)) throw e; } // отклонённую сервером операцию просто выбрасываем
       pending.shift(); store(KEYS.pending, pending);
@@ -186,6 +196,8 @@ async function sync(){
     if (!auth.token) return; // успели выйти, пока шёл запрос
     if (st.pending){ waitingApproval = true; meInfo = st.me; openWaiting(); return; }
     if (waitingApproval){ waitingApproval = false; sheetLocked = false; closeSheet(); toast('Добро пожаловать', 'Заявку одобрили'); }
+    const myTz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch(_){ return ''; } })();
+    if (myTz && st.me && st.me.tz !== myTz) api('PATCH', '/me', {tz: myTz}).catch(() => {});
     const prev = new Map(server.map(e => [e.id, e]));
     const prevInc = new Set(links.incoming);
     applyState(st); store(KEYS.cache, st);
@@ -287,7 +299,10 @@ function renderPeople(){
 function renderInvites(){
   const me = ME();
   const list = entries.filter(e => e.inv && e.inv[me] === 'wait' && e.to >= TODAY_K).sort((a,b) => a.from.localeCompare(b.from));
-  const knocks = links.incoming.filter(id => P[id]).map(id => `<div class="inv" style="--c:${P[id].color}">
+  const asks = entries.filter(e => owner(e) === me && e.to >= TODAY_K).flatMap(e => Object.keys(e.inv || {}).filter(p => e.inv[p] === 'ask' && P[p]).map(p => `<div class="inv" style="--c:${P[p].color}">
+    <div style="min-width:0"><div class="who">${esc(P[p].name)} просится</div><div class="what">${esc(e.what)}</div><div class="meta">${fmtRange(e.from,e.to)}</div></div>
+    <div class="invB"><button class="yes press" data-answ="${e.id}" data-who="${p}" data-ans="yes">Взять</button><button class="no press" data-answ="${e.id}" data-who="${p}" data-ans="no">Нет</button></div></div>`)).join('');
+  const knocks = asks + links.incoming.filter(id => P[id]).map(id => `<div class="inv" style="--c:${P[id].color}">
     <div style="min-width:0"><div class="who">Стучится к вам</div><div class="what">${esc(P[id].name)}</div><div class="meta">@${id}</div></div>
     <div class="invB"><button class="yes press" data-link="${id}" data-la="accept">Принять</button><button class="no press" data-link="${id}" data-la="drop">Нет</button></div></div>`).join('');
   const np = users.filter(u => u.status === 'pending').length;
@@ -330,6 +345,7 @@ function renderMonth(scrollTo){
   for (let i = range[0]; i <= range[1]; i++) h += blockHTML(Math.floor(i/12), i%12, map, V);
   h += `<button class="more press" data-act="more">Показать ещё месяц</button>`;
   $('feed').innerHTML = h;
+  if (picking) markPicked();
   monthHead();
   if (scrollTo !== undefined) requestAnimationFrame(() => goMonth(scrollTo, false));
 }
@@ -354,6 +370,29 @@ function goMonth(i, smooth){
   scrollTo({top:y, behavior: smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto'});
   state.y = Math.floor(i/12); state.m = i%12; monthHead();
 }
+/* ---------- режим выбора дней: долгий тап по дню ---------- */
+let picking = null, lpAt = 0;
+function startPick(k){
+  picking = new Set([k]); lpAt = Date.now();
+  try { navigator.vibrate && navigator.vibrate(30); } catch(_){}
+  document.body.classList.add('picking'); markPicked();
+}
+function togglePick(k){ picking.has(k) ? picking.delete(k) : picking.add(k); markPicked(); }
+function stopPick(){ picking = null; document.body.classList.remove('picking'); markPicked(); }
+function markPicked(){
+  document.querySelectorAll('#feed .day').forEach(b => b.classList.toggle('picked', !!picking && picking.has(b.dataset.day)));
+  const bar = $('pickBar');
+  bar.hidden = !picking;
+  if (picking) $('pickN').textContent = picking.size ? `Выбрано: ${picking.size} ${plural(picking.size,'день','дня','дней')}` : 'Нажимай на дни';
+}
+{ let t = null, x0 = 0, y0 = 0;
+  const feed = $('feed');
+  feed.addEventListener('pointerdown', e => { const b = e.target.closest('.day'); if (!b || picking) return;
+    x0 = e.clientX; y0 = e.clientY; clearTimeout(t); t = setTimeout(() => startPick(b.dataset.day), 450); });
+  const cancel = () => clearTimeout(t);
+  feed.addEventListener('pointermove', e => { if (Math.abs(e.clientX - x0) > 10 || Math.abs(e.clientY - y0) > 10) cancel(); });
+  ['pointerup','pointercancel','pointerleave'].forEach(ev => feed.addEventListener(ev, cancel));
+  feed.addEventListener('contextmenu', e => { if (e.target.closest('.day')) e.preventDefault(); }); }
 function markSel(){
   document.querySelectorAll('#feed .day.sel').forEach(b => b.classList.remove('sel'));
   document.querySelectorAll(`#feed .day[data-day="${state.sel}"]`).forEach(b => b.classList.add('sel'));
@@ -366,7 +405,7 @@ function evHTML(e){
   const mine = owner(e) === ME();
   return `<button class="ev press" data-open="${e.id}">
     <span class="caps">${caps}</span>
-    <span style="min-width:0"><div class="what">${e.vis && e.vis !== 'all' ? LOCK : ''}${esc(e.what)}</div><div class="meta">${joinNames(e.who)}${w.length ? ` · ждём: ${joinNames(w)}` : ''}, ${fmtRange(e.from,e.to)}${Array.isArray(e.vis) ? ` · видят: ${e.vis.length ? joinNames(e.vis) : 'только вы'}` : ''}</div></span>
+    <span style="min-width:0"><div class="what">${e.vis && e.vis !== 'all' ? LOCK : ''}${esc(e.what)}</div><div class="meta">${joinNames(e.who)}${w.length ? ` · ждём: ${joinNames(w)}` : ''}, ${fmtRange(e.from,e.to)}${e.tf ? `, ${e.tf}${e.tt ? '–' + e.tt : ''}` : ''}${Array.isArray(e.vis) ? ` · видят: ${e.vis.length ? joinNames(e.vis) : 'только вы'}` : ''}</div></span>
     ${mine ? `<svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>` : ''}</button>`;
 }
 // дела дня — в шторке
@@ -465,6 +504,23 @@ async function doInstall(){
   render();
 }
 const seg = (attr, cur, opts) => `<div class="seg">${opts.map(([v,t]) => `<button data-${attr}="${v}" aria-pressed="${v === cur}">${t}</button>`).join('')}</div>`;
+// напоминания: правила пользователя
+const REM_ROWS = [['week','За неделю'],['eve','Накануне'],['morn','В день дела']];
+const timeOpts = cur => Array.from({length:48}, (_, i) => `${pad(Math.floor(i/2))}:${i % 2 ? '30' : '00'}`).map(t => `<option${t === cur ? ' selected' : ''}>${t}</option>`).join('');
+function remHTML(){
+  if (!ONLINE || !meInfo || !meInfo.rem) return '';
+  const r = meInfo.rem;
+  let h = `<div class="sec" style="margin-top:28px">Напоминания</div><div class="set">`;
+  for (const [k, t] of REM_ROWS) h += `<div class="setRow"><button class="lnk press${r[k].on ? ' on' : ''}" data-act="remOn" data-k="${k}">${r[k].on ? 'Вкл' : 'Выкл'}</button><div class="k" style="flex:1">${t}</div>
+    <select class="tsel" data-remt="${k}"${r[k].on ? '' : ' disabled'}>${timeOpts(r[k].t)}</select></div>`;
+  h += `<div class="setRow"><button class="lnk press${r.before.on ? ' on' : ''}" data-act="remOn" data-k="before">${r.before.on ? 'Вкл' : 'Выкл'}</button><div style="flex:1"><div class="k">До начала</div><div class="v">если у дела указано время</div></div>
+    <select class="tsel" data-remb="1"${r.before.on ? '' : ' disabled'}>${[[15,'за 15 мин'],[30,'за 30 мин'],[60,'за 1 ч'],[120,'за 2 ч'],[180,'за 3 ч']].map(([v, l]) => `<option value="${v}"${v === r.before.min ? ' selected' : ''}>${l}</option>`).join('')}</select></div>`;
+  return h + `<div class="setRow"><div class="v">Приходят пушем по твоим делам и тем, куда ты идёшь. ${pushOn ? '' : '<b>Сначала включи уведомления.</b>'}</div></div></div>`;
+}
+function saveRem(r){
+  meInfo.rem = r; render();
+  api('PATCH', '/me', {rem: r}).then(sync).catch(() => toast('Не получилось', 'Нет связи с сервером'));
+}
 function settingsHTML(){
   let h = `<div class="set">
     <div class="setRow"><div class="k">Тема</div>${seg('theme', themeName, [['auto','Авто'],['light','Светлая'],['dark','Тёмная']])}</div>
@@ -521,6 +577,7 @@ function renderList(){
 }
 function renderSet(){
   let h = guideHTML() + peopleHTML();
+  h += remHTML();
   if (meInfo && meInfo.admin) h += adminHTML();
   h += `<div class="sec" style="margin-top:28px">Приложение</div>` + settingsHTML().replace(/<p class="itv">[\s\S]*$/, '');
   h += `<p class="itv"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h12M9 4v16" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" fill="none"/><path d="M12 8l4.5 12L21 8" stroke="#FF2E93" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>itivan</p>`;
@@ -553,6 +610,8 @@ function guideBody(){
   <div class="gsec"><b>2. Своё дело и приглашение</b>
     <div class="gsteps"><span class="gstep">+</span><span class="garr">→</span><span class="gstep wide">Что и когда</span><span class="garr">→</span><span class="gstep wide">Позвать</span><span class="garr">→</span><span class="gstep wide ok">Иду</span></div>
     <div class="gnote">Дело всегда на тебя. Позвать можно своих людей — у них появится «Иду / Не иду». Менять дело может только тот, кто его создал.</div>
+    <div class="gnote"><b>Быстро на несколько дней:</b> подержи палец на дне — включится выбор. Потыкай нужные дни и нажми «Записать».</div>
+    <div class="gnote"><b>Хочешь в чужое дело?</b> Открой его и нажми «Хочу с вами» — автор решит.</div>
     <div class="gnote">«Кто видит»: <b>все мои люди</b> или <b>только выбранные</b> — остальные такое дело не увидят совсем. Такие дела помечены замочком.</div></div>
   <div class="gsec"><b>3. Люди</b>
     <div class="ggrid">
@@ -566,7 +625,7 @@ function guideBody(){
       <span>${TAB_IC.month}<b>Месяц</b>листай вниз, нажми на день — его дела</span>
       <span>${TAB_IC.year}<b>Год</b>весь год сеткой, нажми на месяц</span>
       <span>${TAB_IC.list}<b>Ближайшее</b>свободные дни и дела по порядку</span>
-      <span>${TAB_IC.set}<b>Настройки</b>люди, уведомления, ключ</span>
+      <span>${TAB_IC.set}<b>Настройки</b>люди, уведомления, напоминания, ключ</span>
     </div></div>
   <div class="gsec gwarn">${TAB_IC.tip}<div><b>Не ставится на Android?</b> В Chrome зависла вкладка, даже если её не видно: квадратик с цифрой у адресной строки → ⋮ → «Закрыть все вкладки» → открой ссылку заново.
     <br><b>Второй телефон:</b> Настройки → Ключ входа. На iPhone приложение с экрана «Домой» входит ключом отдельно от Safari.</div></div>
@@ -613,24 +672,36 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet()
   sh.addEventListener('touchmove', e => { if (y0 === null) return; dy = e.touches[0].clientY - y0; if (dy > 0){ sh.classList.add('drag'); sh.style.transform = `translateY(${dy}px)`; } }, {passive:true});
   sh.addEventListener('touchend', () => { if (y0 === null) return; sh.classList.remove('drag'); sh.style.transform = ''; y0 = null; if (dy > 90) closeSheet(); }); }
 
-const statusOf = (e, p) => owner(e) === p ? 'создал' + (P[p].f ? 'а' : '') : e.who.includes(p) ? 'идёт' : e.inv && e.inv[p] === 'wait' ? 'ждём ответа' : e.inv && e.inv[p] === 'no' ? 'не идёт' : '';
+const statusOf = (e, p) => (e.inv || {})[p] === 'ask' ? 'просится' : owner(e) === p ? 'создал' + (P[p].f ? 'а' : '') : e.who.includes(p) ? 'идёт' : e.inv && e.inv[p] === 'wait' ? 'ждём ответа' : e.inv && e.inv[p] === 'no' ? 'не идёт' : '';
 
 // форма своего дела
 let form = null;
-function openForm(e, date){
+// разбить выбранные дни на сплошные отрезки
+function toRuns(days){
+  const ds = [...days].sort(), out = [];
+  for (const k of ds){ const last = out[out.length - 1];
+    if (last && key(addDays(parse(last[1]), 1)) === k) last[1] = k; else out.push([k, k]); }
+  return out;
+}
+function openForm(e, date, runs){
   const isEdit = !!e, me = ME(); wheelFor = null;
   form = isEdit ? {id:e.id, people:new Set([...e.who, ...Object.keys(e.inv || {})].filter(p => p !== me)), from:e.from, to:e.to, what:e.what, src:e,
-                   visAll: !Array.isArray(e.vis), vis: new Set(Array.isArray(e.vis) ? e.vis : [])}
-                : {id:null, people:new Set(), from:date||TODAY_K, to:date||TODAY_K, what:'', src:null, visAll:true, vis:new Set()};
+                   visAll: !Array.isArray(e.vis), vis: new Set(Array.isArray(e.vis) ? e.vis : []), tf: e.tf || '', tt: e.tt || '', noRem: !!e.noRem}
+                : {id:null, people:new Set(), from:date||TODAY_K, to:date||TODAY_K, what:'', src:null, visAll:true, vis:new Set(), tf:'', tt:''};
+  if (runs && runs.length){ form.from = runs[0][0]; form.to = runs[0][1]; form.runs = runs.length > 1 ? runs : null; }
   openSheet(`<h2>${isEdit ? 'Изменить дело' : 'Новое дело'}</h2>
     <div class="hint">Занят будешь ты. Остальных можно позвать — они подтвердят сами.</div>
     <label class="f" for="fWhat">Что за дело</label>
     <input class="in" id="fWhat" maxlength="60" placeholder="Например: сборы, Казань" value="${esc(form.what)}">
-    <div class="row2">
+    ${form.runs ? `<label class="f">Дни</label><div class="runs">${form.runs.map(([a, b]) => `<span>${fmtRange(a, b)}</span>`).join('')}</div><div class="hint">Запишется ${form.runs.length} ${plural(form.runs.length,'дело','дела','дел')} с одним названием.</div>` : ''}
+    <div class="row2"${form.runs ? ' hidden' : ''}>
       <div><label class="f">С</label><button type="button" class="in dbtn press" data-dp="from" id="dpFrom">${dLabel(form.from)}</button></div>
       <div><label class="f">По</label><button type="button" class="in dbtn press" data-dp="to" id="dpTo">${dLabel(form.to)}</button></div>
     </div>
+    <div id="timeRow">${timeRowHTML()}</div>
     <div class="wheel" id="wheel" hidden></div>
+    ${srvNew() ? `<label class="f">Напоминание</label>
+    <button type="button" class="lnk press${form.noRem ? '' : ' on'}" data-act="noRem" aria-pressed="${!form.noRem}">${form.noRem ? 'Не напоминать' : 'Напомнить мне'}</button>` : ''}
     <label class="f">Позвать</label>
     <div class="whoPick" id="pick">${pickHTML()}</div>
     <label class="f">Кто видит</label>
@@ -642,30 +713,40 @@ function openForm(e, date){
 }
 /* ---------- барабан выбора даты ---------- */
 const WD_S = ['вс','пн','вт','ср','чт','пт','сб'];
-const dLabel = k => { const d = parse(k); return `${d.getDate()} ${MONTHS_G[d.getMonth()].slice(0,3)} ${d.getFullYear()} · ${WD_S[d.getDay()]}`; };
+const dLabel = k => { const d = parse(k); return `${d.getDate()} ${MONTHS_G[d.getMonth()].slice(0,3)}${d.getFullYear() !== TODAY.getFullYear() ? ' ' + d.getFullYear() : ''} · ${WD_S[d.getDay()]}`; };
 const ITEM = 38;
 let wheelFor = null;
 function openWheel(which){
   const w = $('wheel');
   if (wheelFor === which){ w.hidden = true; wheelFor = null; markDp(); return; }
   wheelFor = which;
-  const y0 = TODAY.getFullYear() - 1, years = [0,1,2,3,4,5].map(i => y0 + i);
+  const base = CUR() - 2, months = Array.from({length:28}, (_, i) => base + i);
+  w._months = months;
   const col = (name, items) => `<div class="wcol" data-col="${name}">${items.map(t => `<div class="wi">${t}</div>`).join('')}</div>`;
-  w.innerHTML = col('d', Array.from({length:31}, (_, i) => i + 1)) + col('m', MONTHS_G) + col('y', years) + '<div class="wband"></div>';
+  w.innerHTML = col('m', months.map(i => `${MONTHS[i%12]}${Math.floor(i/12) !== TODAY.getFullYear() ? ` <small>${Math.floor(i/12)}</small>` : ''}`))
+    + col('d', Array.from({length:31}, (_, i) => `<span class="dn">${i + 1}</span><small class="dw"></small>`)) + '<div class="wband"></div>';
   w.hidden = false; markDp();
-  setWheel(form[which], years);
-  w.querySelectorAll('.wcol').forEach(c => c.addEventListener('scroll', () => { clearTimeout(c._t); c._t = setTimeout(() => onWheel(years), 90); }, {passive:true}));
+  const d = parse(form[which]), mi = mIdx(d.getFullYear(), d.getMonth());
+  w.querySelector('[data-col="m"]').scrollTop = Math.max(0, months.indexOf(mi)) * ITEM;
+  w.querySelector('[data-col="d"]').scrollTop = (d.getDate() - 1) * ITEM;
+  fillDays(mi);
+  w.querySelectorAll('.wcol').forEach(c => c.addEventListener('scroll', () => { clearTimeout(c._t); c._t = setTimeout(onWheel, 90); }, {passive:true}));
   requestAnimationFrame(() => w.scrollIntoView({block:'nearest', behavior:'smooth'}));
 }
-function setWheel(k, years){
-  const d = parse(k), w = $('wheel');
-  const set = (n, i) => { const c = w.querySelector(`[data-col="${n}"]`); c.scrollTop = i * ITEM; };
-  set('d', d.getDate() - 1); set('m', d.getMonth()); set('y', Math.max(0, years.indexOf(d.getFullYear())));
+// подписи дней недели под выбранный месяц
+function fillDays(mi){
+  const y = Math.floor(mi/12), m = mi%12, dim = new Date(y, m + 1, 0).getDate();
+  $('wheel').querySelectorAll('[data-col="d"] .wi').forEach((el, i) => {
+    const d = i + 1, wd = d <= dim ? new Date(y, m, d).getDay() : -1;
+    el.classList.toggle('dis', d > dim); el.classList.toggle('we', wd === 0 || wd === 6);
+    el.querySelector('.dw').textContent = d <= dim ? WD_S[wd] : '';
+  });
 }
-function onWheel(years){
+function onWheel(){
   if (!wheelFor) return;
   const w = $('wheel'), idx = n => Math.round(w.querySelector(`[data-col="${n}"]`).scrollTop / ITEM);
-  const y = years[Math.min(years.length - 1, idx('y'))], m = Math.min(11, idx('m'));
+  const mi = w._months[Math.min(w._months.length - 1, idx('m'))], y = Math.floor(mi/12), m = mi%12;
+  fillDays(mi);
   const dim = new Date(y, m + 1, 0).getDate();
   let day = Math.min(31, idx('d') + 1);
   if (day > dim){ day = dim; w.querySelector('[data-col="d"]').scrollTo({top:(dim - 1) * ITEM, behavior:'smooth'}); }
@@ -674,7 +755,39 @@ function onWheel(years){
   if (form.to < form.from){ if (wheelFor === 'from') form.to = k; else form.from = k; }
   $('dpFrom').textContent = dLabel(form.from); $('dpTo').textContent = dLabel(form.to);
 }
-function markDp(){ ['from','to'].forEach(n => $('dp' + (n === 'from' ? 'From' : 'To')).classList.toggle('on', wheelFor === n)); }
+// новые возможности (время, «хочу с вами», напоминания) включаются, когда сервер их поддерживает
+const srvNew = () => !ONLINE || !!(meInfo && meInfo.rem);
+// время — необязательно: «с» и «до»
+function timeRowHTML(){
+  if (!srvNew()) return '';
+  if (!form.tf) return `<button type="button" class="lnk press" data-act="addTime" style="margin-top:12px">+ Указать время</button>`;
+  return `<div class="row2" style="margin-top:4px">
+    <div><label class="f">Время с</label><button type="button" class="in dbtn press" data-dp="tf" id="dpTf">${form.tf}</button></div>
+    <div><label class="f">до</label><button type="button" class="in dbtn press" data-dp="tt" id="dpTt">${form.tt || '—'}</button></div></div>
+    <button type="button" class="lnk press" data-act="noTime" style="margin-top:8px">Без времени</button>`;
+}
+function openTimeWheel(which){
+  const w = $('wheel');
+  wheelFor = which;
+  const H = Array.from({length:24}, (_, i) => pad(i)), M = Array.from({length:12}, (_, i) => pad(i * 5));
+  const col = (name, items) => `<div class="wcol" data-col="${name}">${items.map(t => `<div class="wi">${t}</div>`).join('')}</div>`;
+  w.innerHTML = col('h', H) + col('mm', M) + '<div class="wband"></div>';
+  w.classList.add('time'); w.hidden = false; markDp();
+  const [h, m] = (form[which] || form.tf || '19:00').split(':').map(Number);
+  w.querySelector('[data-col="h"]').scrollTop = h * ITEM;
+  w.querySelector('[data-col="mm"]').scrollTop = Math.round(m / 5) * ITEM;
+  w.querySelectorAll('.wcol').forEach(c => c.addEventListener('scroll', () => { clearTimeout(c._t); c._t = setTimeout(onTimeWheel, 90); }, {passive:true}));
+  onTimeWheel();
+  requestAnimationFrame(() => w.scrollIntoView({block:'nearest', behavior:'smooth'}));
+}
+function onTimeWheel(){
+  if (wheelFor !== 'tf' && wheelFor !== 'tt') return;
+  const w = $('wheel'), idx = n => Math.round(w.querySelector(`[data-col="${n}"]`).scrollTop / ITEM);
+  form[wheelFor] = `${pad(Math.min(23, idx('h')))}:${pad(Math.min(11, idx('mm')) * 5)}`;
+  if (form.tt && form.tt <= form.tf && form.from === form.to){ if (wheelFor === 'tf') form.tt = ''; }
+  $('dpTf').textContent = form.tf; $('dpTt').textContent = form.tt || '—';
+}
+function markDp(){ [['from','dpFrom'],['to','dpTo'],['tf','dpTf'],['tt','dpTt']].forEach(([n, id]) => $(id) && $(id).classList.toggle('on', wheelFor === n)); }
 
 function visHTML(){
   if (form.visAll) return '<div class="hint" style="margin:0">Дело увидят все, с кем у вас есть связь.</div>';
@@ -700,7 +813,15 @@ function saveForm(){
   if (!from || !to) return err.textContent = 'Укажите обе даты.';
   if (to < from) return err.textContent = 'Дата «по» раньше даты «с».';
   const me = ME(), wasEdit = !!form.id, r = fmtRange(from,to);
-  const entry = {id: form.id || newId(), what, from, to, people:[...form.people], vis: form.visAll ? 'all' : [...form.vis]};
+  if (form.runs){
+    for (const [a, b] of form.runs){
+      const rr = fmtRange(a, b);
+      commit({op:'put', entry:{id:newId(), what, from:a, to:b, people:[...form.people], vis: form.visAll ? 'all' : [...form.vis], tf: form.tf || '', tt: form.tt || '', noRem: !!form.noRem},
+        note:`${P[me].name} ${verb(me,'добавил')}: ${what}, ${rr}`, inviteNote:`${P[me].name} зовёт: ${what}, ${rr}`});
+    }
+    closeSheet(); toast('Добавлено', `${what}: ${form.runs.length} ${plural(form.runs.length,'дело','дела','дел')}`); render(); return;
+  }
+  const entry = {id: form.id || newId(), what, from, to, people:[...form.people], vis: form.visAll ? 'all' : [...form.vis], tf: form.tf || '', tt: form.tt || '', noRem: !!form.noRem};
   const newInv = entry.people.filter(p => !(form.src && (form.src.who.includes(p) || (form.src.inv || {})[p])));
   commit({op:'put', entry, note:`${P[me].name} ${verb(me, wasEdit ? 'изменил' : 'добавил')}: ${what}, ${r}`, inviteNote:`${P[me].name} зовёт: ${what}, ${r}`});
   closeSheet();
@@ -732,6 +853,8 @@ function openView(e){
   if (st === 'wait') btns = `<button class="btn ok press" data-rsvp="${e.id}" data-ans="yes">Иду</button><button class="btn plain press" data-rsvp="${e.id}" data-ans="no">Не иду</button>`;
   else if (st === 'no') btns = `<button class="btn ok press" data-rsvp="${e.id}" data-ans="yes">Передумал${P[me].f ? 'а' : ''} — иду</button>`;
   else if (mine) btns = `<button class="btn ghost press" data-rsvp="${e.id}" data-ans="no">Не пойду</button>`;
+  else if (st === 'ask') btns = `<div class="hint" style="margin-top:14px">Ты попросил${P[me].f ? 'ась' : 'ся'} — ждём, что ответит ${esc(P[by].name)}.</div>`;
+  else if (srvNew() && links.friends.includes(by)) btns = `<button class="btn ok press" data-act="ask" data-id="${e.id}">Хочу с вами</button><div class="hint" style="margin-top:8px">${esc(P[by].name)} получит просьбу и решит.</div>`;
   openSheet(`<h2>${esc(e.what)}</h2><div class="hint">${fmtRange(e.from,e.to)}</div>
     <div class="plist">${people.map(p => `<div class="prow" style="--c:${P[p].color}"><span class="dot"></span>${esc(P[p].name)}<span class="st">${statusOf(e,p)}</span></div>`).join('')}</div>
     ${btns || `<div class="hint" style="margin-top:14px">Изменить может только ${esc(P[by].name)}.</div>`}`);
@@ -953,7 +1076,11 @@ document.addEventListener('click', ev => {
   if (d.skin){ skinName = d.skin; store(KEYS.skin, skinName); applySkin(); render(); return; }
   if (d.person){ state.hidden.has(d.person) ? state.hidden.delete(d.person) : state.hidden.add(d.person); render(); return; }
   if (d.pick){ form.people.has(d.pick) ? form.people.delete(d.pick) : form.people.add(d.pick); $('pick').innerHTML = pickHTML(); $('visPick').innerHTML = visHTML(); return; }
-  if (d.dp){ openWheel(d.dp); return; }
+  if (d.dp){
+    if (wheelFor === d.dp){ $('wheel').hidden = true; wheelFor = null; markDp(); return; }
+    $('wheel').classList.remove('time');
+    if (d.dp === 'tf' || d.dp === 'tt'){ openTimeWheel(d.dp); return; }
+    wheelFor = null; openWheel(d.dp); return; }
   if (d.fvis){ form.visAll = d.fvis === 'all'; t.parentNode.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === t)); $('visPick').innerHTML = visHTML(); return; }
   if (d.vis){ form.vis.has(d.vis) ? form.vis.delete(d.vis) : form.vis.add(d.vis); t.setAttribute('aria-pressed', form.vis.has(d.vis)); return; }
   if (d.ltab){ loginTab = d.ltab; openLogin(); return; }
@@ -962,9 +1089,12 @@ document.addEventListener('click', ev => {
   if (d.link){ linkAction(d.link, d.la); return; }
   if (d.adm){ if (d.aa === 'reject' && t.dataset.sure !== '1'){ t.dataset.sure = '1'; t.textContent = 'Точно?'; return; } adminAction(d.adm, d.aa); return; }
   if (d.rsvp){ rsvp(d.rsvp, d.ans); return; }
-  if (d.day){ openDay(d.day); return; }
+  if (d.answ){ const e = entries.find(x => x.id === d.answ); commit({op:'answer', id:d.answ, who:d.who, ans:d.ans}); render();
+    toast(d.ans === 'yes' ? 'Взяли' : 'Отказали', `${P[d.who] ? P[d.who].name : ''}${e ? ' · ' + e.what : ''}`); return; }
+  if (d.day){ if (Date.now() - lpAt < 600) return; if (picking){ togglePick(d.day); return; } openDay(d.day); return; }
   if (d.date){ const dt = parse(d.date); openMonth(mIdx(dt.getFullYear(), dt.getMonth()), d.date); return; }
   if (d.open){ const e = entries.find(x => x.id === d.open); if (!e) return; owner(e) === ME() ? openForm(e) : openView(e); return; }
+  if (d.view && picking) stopPick();
   if (d.view){
     if (isMulti(d.view)){ state.sy = TODAY.getFullYear(); state.sm = TODAY.getMonth(); }
     if (d.view === 'month'){ openMonth(mIdx(state.y, state.m), state.sel); return; }
@@ -979,7 +1109,15 @@ document.addEventListener('click', ev => {
       if (state.view === 'month') goMonth(mIdx(state.y, state.m) + n, true);
       break;
     }
-    case 'more': state.extra++; renderMonth(); break;
+    case 'more': state.extra++; renderMonth(); markPicked(); break;
+    case 'pickCancel': stopPick(); break;
+    case 'ask': { const e = entries.find(x => x.id === d.id); if (!e) break; commit({op:'ask', id:d.id}); closeSheet(); render();
+      toast('Просьба отправлена', `${P[owner(e)].name} решит: ${e.what}`); break; }
+    case 'noRem': form.noRem = !form.noRem; t.setAttribute('aria-pressed', !form.noRem); t.textContent = form.noRem ? 'Не напоминать' : 'Напомнить мне'; break;
+    case 'remOn': { const r = JSON.parse(JSON.stringify(meInfo.rem)); r[d.k].on = !r[d.k].on; saveRem(r); break; }
+    case 'addTime': form.tf = '19:00'; form.tt = ''; $('timeRow').innerHTML = timeRowHTML(); openTimeWheel('tf'); break;
+    case 'noTime': form.tf = form.tt = ''; wheelFor = null; $('wheel').hidden = true; $('timeRow').innerHTML = timeRowHTML(); break;
+    case 'pickSave': { if (!picking || !picking.size){ toast('Выбор дней', 'Сначала отметь дни'); break; } const runs = toRuns(picking); stopPick(); openForm(null, null, runs); break; }
     case 'today':
       if (state.view === 'month'){ state.sel = TODAY_K; goMonth(CUR(), true); markSel(); }
       else { state.sy = TODAY.getFullYear(); state.sm = TODAY.getMonth(); render(); }
@@ -1015,7 +1153,10 @@ document.addEventListener('click', ev => {
 });
 // лёгкая вибрация на нажатие (Android; iPhone из браузера не умеет)
 document.addEventListener('toggle', e => { if (e.target.id === 'guideBox'){ guideOpen = e.target.open; if (guideOpen) store('kk-guide', 1); } }, true);
-document.addEventListener('change', e => { if (e.target.id === 'admLink') store('kk-admlink', e.target.checked); });
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (t.dataset && t.dataset.remt){ const r = JSON.parse(JSON.stringify(meInfo.rem)); r[t.dataset.remt].t = t.value; saveRem(r); return; }
+  if (t.dataset && t.dataset.remb){ const r = JSON.parse(JSON.stringify(meInfo.rem)); r.before.min = +t.value; saveRem(r); return; } if (e.target.id === 'admLink') store('kk-admlink', e.target.checked); });
 document.addEventListener('pointerdown', e => { if (e.target.closest('button') && navigator.vibrate) try { navigator.vibrate(50); } catch(_){} }, {passive:true});
 
 addEventListener('scroll', onFeedScroll, {passive:true});
