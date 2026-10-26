@@ -1,5 +1,5 @@
 // Кто когда — service worker. При изменении файлов меняйте VERSION.
-const VERSION = 'kk-20';
+const VERSION = 'kk-21';
 const SHELL = ['./', 'index.html', 'app.js?v=20', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
