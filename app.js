@@ -575,13 +575,49 @@ function renderList(){
   h += up.length ? up.map(evHTML).join('') : `<div class="empty">Пока никто ничего не запланировал.</div>`;
   $('vList').innerHTML = h;
 }
+// настройки — свёрнутые блоки с коротким описанием
+const openBlk = new Set(load('kk-blk', []));
+const BLK_IC = {
+  people:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2a5 5 0 0 1 5.5 5.8"/></svg>',
+  bell:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9"/><path d="M10 20a2.2 2.2 0 0 0 4 0"/></svg>',
+  me:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
+  look:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18" fill="currentColor"/></svg>',
+  dev:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/></svg>'
+};
+const blk = (k, ic, color, title, sub, inner) => `<details class="set gbox blk" data-blk="${k}"${openBlk.has(k) ? ' open' : ''}><summary><span class="gic" style="--ic:${color}">${ic}</span><span class="gtt"><b>${title}</b><small>${sub}</small></span><svg class="arr" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary><div class="blkin">${inner}</div></details>`;
+const strip = h => h.replace(/^\s*<div class="sec"[^>]*>[^<]*<\/div>/, '');
 function renderSet(){
-  let h = guideHTML() + peopleHTML();
-  h += remHTML();
-  if (meInfo && meInfo.admin) h += adminHTML();
-  h += `<div class="sec" style="margin-top:28px">Приложение</div>` + settingsHTML().replace(/<p class="itv">[\s\S]*$/, '');
+  const nFr = links.friends.length, nIn = links.incoming.length;
+  let h = guideHTML();
+  h += blk('people', BLK_IC.people, '#0A84FF', 'Люди',
+    `${nFr ? `${nFr} ${plural(nFr,'человек','человека','человек')}` : 'пока никого'}${nIn ? ` · стучатся: ${nIn}` : ''} · пригласить`, strip(peopleHTML()));
+  if (ONLINE && meInfo){
+    const r = meInfo.rem, remSub = !srvNew() ? 'скоро' : [r.week.on && 'за неделю', r.eve.on && `накануне ${r.eve.t}`, r.morn.on && `в день ${r.morn.t}`, r.before.on && `за ${r.before.min >= 60 ? r.before.min/60 + ' ч' : r.before.min + ' мин'}`].filter(Boolean).join(', ') || 'выключены';
+    h += blk('notif', BLK_IC.bell, '#FF9F0A', 'Уведомления', `${pushOn ? 'включены' : 'выключены'} · напоминания: ${remSub}`, notifHTML() + strip(remHTML()));
+    h += blk('me', BLK_IC.me, '#30B05A', 'Профиль и вход', `${esc(meInfo.name)} · @${meInfo.id} · ключ входа`, meHTML());
+  } else if (!ONLINE) {
+    h += blk('me', BLK_IC.me, '#30B05A', 'Демо-режим', `вы — ${esc(P[ME()].name)}, данные только здесь`,
+      `<div class="set"><div class="setRow"><div class="v">Данные только на этом устройстве</div><button class="lnk press" data-act="reset">Сбросить</button></div></div>`);
+  }
+  h += blk('look', BLK_IC.look, '#BF5AF2', 'Внешний вид', `тема: ${{auto:'авто',light:'светлая',dark:'тёмная'}[themeName]} · стиль ${SKINS.find(x => x[0] === skinName)[1]} · установка`, lookHTML());
+  if (meInfo && meInfo.admin) h += blk('dev', BLK_IC.dev, '#8E8E93', 'Разработчик', `${users.filter(u => u.id !== ME()).length} пользователей · блок, ключи`, strip(adminHTML()));
   h += `<p class="itv"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h12M9 4v16" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" fill="none"/><path d="M12 8l4.5 12L21 8" stroke="#FF2E93" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>itivan</p>`;
   $('vSet').innerHTML = h;
+}
+function lookHTML(){
+  return `<div class="set">
+    <div class="setRow"><div class="k">Тема</div>${seg('theme', themeName, [['auto','Авто'],['light','Светлая'],['dark','Тёмная']])}</div>
+    <div class="setRow"><div class="k">Стиль</div>${seg('skin', skinName, SKINS)}</div>
+    <div class="setRow"><div><div class="k">Установка на телефон</div><div class="v">${standalone ? 'Установлено' : 'Инструкция для iPhone и Android'}</div></div><button class="lnk press" data-act="howto">Как</button></div></div>`;
+}
+function notifHTML(){
+  const pushNote = pushOn ? 'Приглашения, запросы и напоминания' : (isIOS && !standalone) ? 'На iPhone сначала: Поделиться → «На экран Домой»' : 'Включи, чтобы видеть, кто что добавил';
+  return `<div class="set"><div class="setRow"><div><div class="k">Пуш-уведомления</div><div class="v">${pushNote}</div></div><button class="lnk press${pushOn ? ' on' : ''}" data-act="push">${pushOn ? 'Включены' : 'Включить'}</button></div>
+    <div class="setRow"><div><div class="k">О делах всех людей</div><div class="v">${meInfo.pushAll ? 'Пуш о каждом новом деле' : 'Только приглашения и запросы'}</div></div><button class="lnk press${meInfo.pushAll ? ' on' : ''}" data-act="pushAll">${meInfo.pushAll ? 'Да' : 'Нет'}</button></div></div>`;
+}
+function meHTML(){
+  return `<div class="set"><div class="setRow"><div><div class="k">${esc(meInfo.name)} · @${meInfo.id}</div><div class="v">${pending.length ? `Не отправлено изменений: ${pending.length}` : 'Всё сохранено'}</div></div><button class="lnk press" data-act="profile">Изменить</button></div>
+    <div class="setRow"><div><div class="k">Ключ входа</div><div class="v">Чтобы войти на другом телефоне</div></div><button class="lnk press" data-act="showKey">Показать</button></div></div>`;
 }
 // гайд «Как это работает» — в стиле Монеток: короткие шаги с картинками
 let guideOpen = false;
@@ -600,38 +636,52 @@ const gday = (n, cols) => `<span class="gday${cols.length ? ' filled' : ''}${col
 function guideBody(){
   const [a, b] = [P[ME()] ? P[ME()].color : '#30B05A', '#BF5AF2'];
   return `<div class="gbody">
-  <div class="gsec"><b>1. Полоса в дне — человек занят</b>
+  <div class="gsec"><b>1. Смотрим, кто занят</b>
     <div class="gflow3">
       <span class="gex">${gday(12, [])}<span><b>Пусто</b>все свободны</span></span>
-      <span class="gex">${gday(13, [a])}<span><b>Одна полоса</b>занят один</span></span>
-      <span class="gex">${gday(14, [a, b])}<span><b>Две и больше</b>заняты несколько</span></span>
+      <span class="gex">${gday(13, [a])}<span><b>Одна полоска</b>один занят</span></span>
+      <span class="gex">${gday(14, [a, b])}<span><b>Много полосок</b>заняты несколько</span></span>
     </div>
-    <div class="gnote">У каждого свой цвет. Кружки с именами над календарём — фильтр: нажми, чтобы спрятать человека.</div></div>
-  <div class="gsec"><b>2. Своё дело и приглашение</b>
-    <div class="gsteps"><span class="gstep">+</span><span class="garr">→</span><span class="gstep wide">Что и когда</span><span class="garr">→</span><span class="gstep wide">Позвать</span><span class="garr">→</span><span class="gstep wide ok">Иду</span></div>
-    <div class="gnote">Дело всегда на тебя. Позвать можно своих людей — у них появится «Иду / Не иду». Менять дело может только тот, кто его создал.</div>
-    <div class="gnote"><b>Быстро на несколько дней:</b> подержи палец на дне — включится выбор. Потыкай нужные дни и нажми «Записать».</div>
-    <div class="gnote"><b>Хочешь в чужое дело?</b> Открой его и нажми «Хочу с вами» — автор решит.</div>
-    <div class="gnote">«Кто видит»: <b>все мои люди</b> или <b>только выбранные</b> — остальные такое дело не увидят совсем. Такие дела помечены замочком.</div></div>
-  <div class="gsec"><b>3. Люди</b>
+    <div class="gnote">У каждого человека свой цвет. Полоска в дне — этот человек занят.</div>
+    <div class="gnote">Нажми на день — увидишь, кто чем занят.</div></div>
+
+  <div class="gsec"><b>2. Записываем своё дело</b>
+    <div class="gsteps"><span class="gstep">+</span><span class="garr">→</span><span class="gstep wide">Что за дело</span><span class="garr">→</span><span class="gstep wide">Когда</span><span class="garr">→</span><span class="gstep wide ok">Сохранить</span></div>
+    <div class="gnote">Нажми большую кнопку <b>+</b> внизу. Напиши, что за дело. Выбери день — крути колёсико пальцем вверх-вниз. Нажми «Сохранить».</div>
+    <div class="gnote"><b>Несколько дней сразу:</b> подержи палец на дне, пока он не выделится. Потом нажимай на другие дни. Внизу нажми «Записать».</div>
+    <div class="gnote"><b>Время</b> можно указать, а можно и не указывать.</div></div>
+
+  <div class="gsec"><b>3. Зовём других</b>
+    <div class="gnote">В деле есть «Позвать». Нажми на имя — человеку придёт вопрос «Иду или не иду?».</div>
+    <div class="gnote">Увидел чужое дело и хочешь тоже? Открой его и нажми <b>«Хочу с вами»</b>. Хозяин дела ответит.</div>
+    <div class="gnote">Своё дело можешь показать <b>всем</b> или <b>только некоторым</b>. Такие дела с замочком.</div></div>
+
+  <div class="gsec"><b>4. Добавляем людей</b>
     <div class="ggrid">
-      <div class="gcard">${TAB_IC.link}<b>Пригласить</b><span>одноразовая ссылка на 7 дней</span></div>
-      <div class="gcard">${TAB_IC.knock}<b>Постучаться</b><span>по точному @нику</span></div>
-      <div class="gcard">${TAB_IC.drop}<b>Убрать</b><span>и вы не видите друг друга</span></div>
+      <div class="gcard">${TAB_IC.link}<b>Пригласить</b><span>отправь ссылку тому, кого зовёшь</span></div>
+      <div class="gcard">${TAB_IC.knock}<b>Постучаться</b><span>если он уже здесь — по нику</span></div>
+      <div class="gcard">${TAB_IC.drop}<b>Убрать</b><span>и вы больше не видите друг друга</span></div>
     </div>
-    <div class="gnote">Новый человек попадает сюда только по твоей ссылке — со стороны зарегистрироваться нельзя.</div></div>
-  <div class="gsec"><b>4. Кнопки внизу экрана</b>
+    <div class="gnote">Это в Настройках, раздел «Люди». Чужие сюда не попадут — только по твоей ссылке.</div></div>
+
+  <div class="gsec"><b>5. Напоминания</b>
+    <div class="gnote">Телефон сам напомнит о деле: накануне вечером и за час до начала. В Настройках можно выбрать, когда напоминать.</div>
+    <div class="gnote">Чтобы напоминания приходили, в Настройках нажми <b>Уведомления → Включить</b>.</div></div>
+
+  <div class="gsec"><b>6. Кнопки внизу</b>
     <div class="gwhere">
-      <span>${TAB_IC.month}<b>Месяц</b>листай вниз, нажми на день — его дела</span>
-      <span>${TAB_IC.year}<b>Год</b>весь год сеткой, нажми на месяц</span>
-      <span>${TAB_IC.list}<b>Ближайшее</b>свободные дни и дела по порядку</span>
-      <span>${TAB_IC.set}<b>Настройки</b>люди, уведомления, напоминания, ключ</span>
+      <span>${TAB_IC.month}<b>Месяц</b>календарь, листай вниз</span>
+      <span>${TAB_IC.year}<b>Год</b>весь год сразу</span>
+      <span>${TAB_IC.list}<b>Ближайшее</b>что скоро и когда все свободны</span>
+      <span>${TAB_IC.set}<b>Настройки</b>люди, уведомления</span>
     </div></div>
-  <div class="gsec gwarn">${TAB_IC.tip}<div><b>Не ставится на Android?</b> В Chrome зависла вкладка, даже если её не видно: квадратик с цифрой у адресной строки → ⋮ → «Закрыть все вкладки» → открой ссылку заново.
-    <br><b>Второй телефон:</b> Настройки → Ключ входа. На iPhone приложение с экрана «Домой» входит ключом отдельно от Safari.</div></div>
+
+  <div class="gsec gwarn">${TAB_IC.tip}<div><b>Если что-то не так</b><br>
+    • Приложение не ставится на Android — закрой все вкладки в Chrome (квадратик с цифрой → ⋮ → «Закрыть все вкладки») и открой ссылку снова.<br>
+    • Новый телефон — в Настройках возьми «Ключ входа» и вставь его на новом телефоне.</div></div>
   </div>`;
 }
-const guideHTML = () => `<details class="set gbox"${guideOpen ? ' open' : ''} id="guideBox"><summary><span class="gic">${TAB_IC.tip}</span><span class="gtt"><b>Как это работает</b><small>две минуты — и всё понятно</small></span><svg class="arr" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>${guideBody()}</details>`;
+const guideHTML = () => `<details class="set gbox"${guideOpen ? ' open' : ''} id="guideBox"><summary><span class="gic">${TAB_IC.tip}</span><span class="gtt"><b>Как это работает</b><small>просто и по шагам</small></span><svg class="arr" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>${guideBody()}</details>`;
 
 function render(){
   const v = state.view, multi = isMulti(v), plain = v === 'list' || v === 'set';
@@ -1152,7 +1202,7 @@ document.addEventListener('click', ev => {
   }
 });
 // лёгкая вибрация на нажатие (Android; iPhone из браузера не умеет)
-document.addEventListener('toggle', e => { if (e.target.id === 'guideBox'){ guideOpen = e.target.open; if (guideOpen) store('kk-guide', 1); } }, true);
+document.addEventListener('toggle', e => { const k = e.target.dataset && e.target.dataset.blk; if (k){ e.target.open ? openBlk.add(k) : openBlk.delete(k); store('kk-blk', [...openBlk]); return; } if (e.target.id === 'guideBox'){ guideOpen = e.target.open; if (guideOpen) store('kk-guide', 1); } }, true);
 document.addEventListener('change', e => {
   const t = e.target;
   if (t.dataset && t.dataset.remt){ const r = JSON.parse(JSON.stringify(meInfo.rem)); r[t.dataset.remt].t = t.value; saveRem(r); return; }
