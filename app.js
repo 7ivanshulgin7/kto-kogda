@@ -2,13 +2,14 @@
 const CONFIG = {
   // Адрес API Gateway из Яндекс Cloud, напр. 'https://d5dxxxxxxxx.apigw.yandexcloud.net'
   // Пусто — демо-режим: данные хранятся только на этом устройстве, вы — DEMO_ME.
-  API_URL: '',
+  API_URL: 'https://d5d6pof8q0gpe24mebt8.l5v6loqa.apigw.yandexcloud.net',
   // Публичный VAPID-ключ. Можно оставить пустым — приложение возьмёт его с сервера.
   VAPID_PUBLIC: '',
   DEMO_ME: 'ivan'
 };
+// Люди для демо-режима. В рабочем режиме список приходит с сервера: вы и ваши связи.
 // f:true — для «добавила/изменила», иначе «добавил/изменил»
-const PEOPLE = [
+const DEMO_PEOPLE = [
   {id:'mama',   name:'Мама', f:true,  color:'#FF375F'},
   {id:'papa',   name:'Папа', f:false, color:'#0A84FF'},
   {id:'ivan',   name:'Иван', f:false, color:'#30B05A'},
@@ -18,12 +19,17 @@ const PEOPLE = [
 /* ============================================ */
 
 const ONLINE = !!CONFIG.API_URL;
-const P = Object.fromEntries(PEOPLE.map(p => [p.id, p]));
+let PEOPLE = [], P = {};     // PEOPLE — вы и связи (фильтр сверху), P — все известные по id
+function setPeople(list, chipIds){
+  P = Object.fromEntries(list.map(p => [p.id, p]));
+  PEOPLE = chipIds.filter(id => P[id]).map(id => P[id]);
+}
+const COLORS = ['#FF375F','#FF9F0A','#FFD60A','#30B05A','#64D2FF','#0A84FF','#5E5CE6','#BF5AF2','#AC8E68','#8E8E93'];
 const verb = (id, base) => base + (P[id] && P[id].f ? 'а' : '');
 const MONTHS = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
 const MONTHS_G = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
 const WDF = ['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'];
-const KEYS = {inst:'kk-inst', auth:'kk-auth', cache:'kk-cache', pending:'kk-pending', demo:'kk-demo2', style:'kk-style', theme:'kk-theme'};
+const KEYS = {skin:'kk-skin', lay:'kk-lay', inst:'kk-inst', auth:'kk-auth2', cache:'kk-state2', pending:'kk-pending2', demo:'kk-demo2', style:'kk-style', theme:'kk-theme'};
 
 const pad = n => String(n).padStart(2,'0');
 const key = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
@@ -49,7 +55,10 @@ const standalone = matchMedia('(display-mode: standalone)').matches || navigator
     inv: {id: 'wait' | 'no'} — приглашённые: ждём ответа / отказались}
    Та же логика слияния стоит на сервере (backend/index.js). */
 const owner = e => e.by || (e.who && e.who[0]);
-const known = e => e && Array.isArray(e.who) && e.who.every(w => P[w]) && P[owner(e)];
+const D_RE = /^\d{4}-\d{2}-\d{2}$/;
+// проверяем всё, что пришло с сервера, прежде чем рисовать: id и даты попадают в разметку
+const known = e => e && /^[a-z0-9]{4,24}$/.test(e.id) && D_RE.test(e.from) && D_RE.test(e.to) && typeof e.what === 'string'
+  && Array.isArray(e.who) && e.who.every(w => P[w]) && P[owner(e)];
 function mergePut(prev, req, by){
   const people = [...new Set((req.people || []).filter(p => p !== by && P[p]))];
   const who = [by], inv = {};
@@ -101,13 +110,34 @@ function demo(){
   ];
 }
 
-let auth = load(KEYS.auth, {});
-const ME = () => ONLINE ? ((auth.me && P[auth.me]) ? auth.me : PEOPLE[0].id) : CONFIG.DEMO_ME;
-let server = ONLINE ? load(KEYS.cache, []) : [];
+let auth = load(KEYS.auth, {});            // {token, me}
+// ссылка-приглашение: …/kto-kogda/#i=КОД
+let inviteCode = null, inviter = null;
+function readInvite(){
+  const m = /[#&]i=([A-Za-z0-9_-]{10,32})/.exec(location.hash);
+  if (m){ inviteCode = m[1]; try { history.replaceState(null, '', location.pathname + location.search); } catch(_){} }
+  return !!m;
+}
+readInvite();
+addEventListener('hashchange', () => { if (readInvite()) handleInvite(); });
+let S = ONLINE ? load(KEYS.cache, null) : null;   // последний ответ /state
+let server = [], links = {friends:[], incoming:[], outgoing:[]}, users = [], meInfo = null, waitingApproval = false;
+const ME = () => ONLINE ? (meInfo ? meInfo.id : auth.me || '') : CONFIG.DEMO_ME;
+function applyState(st){
+  S = st; meInfo = st.me; server = st.entries || []; users = st.users || [];
+  links = Object.assign({friends:[], incoming:[], outgoing:[]}, st.links || {});
+  const friends = links.friends.filter(id => st.people.some(p => p.id === id))
+    .sort((a,b) => st.people.find(p => p.id === a).name.localeCompare(st.people.find(p => p.id === b).name, 'ru'));
+  setPeople(st.people, [st.me.id, ...friends]);
+}
 let pending = ONLINE ? load(KEYS.pending, []) : [];
 let entries;
-if (ONLINE) entries = applyPending(server);
-else { entries = load(KEYS.demo, null); if (!Array.isArray(entries)) entries = demo(); entries = entries.filter(known); }
+if (ONLINE){ if (S && S.me) applyState(S); entries = applyPending(server); }
+else {
+  setPeople(DEMO_PEOPLE, [CONFIG.DEMO_ME, ...DEMO_PEOPLE.map(p => p.id).filter(id => id !== CONFIG.DEMO_ME)]);
+  links.friends = DEMO_PEOPLE.map(p => p.id).filter(id => id !== CONFIG.DEMO_ME);
+  entries = load(KEYS.demo, null); if (!Array.isArray(entries)) entries = demo(); entries = entries.filter(known);
+}
 
 function applyPending(base){
   let list = base.filter(known);
@@ -126,38 +156,48 @@ function commit(op){
 async function api(method, path, body){
   const r = await fetch(CONFIG.API_URL.replace(/\/+$/,'') + path, {
     method, cache:'no-store',
-    headers: {'Content-Type':'application/json', 'X-Family-Key': auth.key || ''},
+    headers: {'Content-Type':'application/json', 'Authorization': 'Bearer ' + (auth.token || '')},
     body: body ? JSON.stringify(body) : undefined
   });
+  let data = null; try { data = await r.json(); } catch(_){}
   if (r.status === 401){ const e = new Error('auth'); e.auth = true; throw e; }
-  if (r.status === 403 || r.status === 404) return null; // чужое/удалённое дело — операцию просто пропускаем
-  if (!r.ok) throw new Error('HTTP ' + r.status);
-  return r.json();
+  if (r.status === 403 && data && /Доступ закрыт/.test(data.error || '')){ const e = new Error('blocked'); e.blocked = true; throw e; }
+  if (!r.ok){ const e = new Error((data && data.error) || ('HTTP ' + r.status)); e.status = r.status; e.user = data && data.error; throw e; }
+  return data;
 }
 let syncing = false, again = false, firstSync = true;
 function setSync(t){ $('sync').textContent = t; $('sync').hidden = !t; }
 async function sync(){
-  if (!ONLINE || !auth.key) return;
+  if (!ONLINE || !auth.token) return;
   if (syncing){ again = true; return; }
   syncing = true;
   try {
     while (pending.length){
-      const op = pending[0], b = {by:op.by, note:op.note, inviteNote:op.inviteNote};
-      if (op.op === 'put') await api('PUT', '/entries/' + op.entry.id, {...b, entry:op.entry});
-      else if (op.op === 'del') await api('DELETE', '/entries/' + op.id, b);
-      else await api('POST', `/entries/${op.id}/rsvp`, {...b, ans:op.ans});
+      const op = pending[0];
+      try {
+        if (op.op === 'put') await api('PUT', '/entries/' + op.entry.id, {entry:op.entry});
+        else if (op.op === 'del') await api('DELETE', '/entries/' + op.id);
+        else await api('POST', `/entries/${op.id}/rsvp`, {ans:op.ans});
+      } catch(e){ if (!(e.status >= 400 && e.status < 500)) throw e; } // отклонённую сервером операцию просто выбрасываем
       pending.shift(); store(KEYS.pending, pending);
     }
-    const r = await api('GET', '/entries');
+    const st = await api('GET', '/state');
+    if (!auth.token) return; // успели выйти, пока шёл запрос
+    if (st.pending){ waitingApproval = true; meInfo = st.me; openWaiting(); return; }
+    if (waitingApproval){ waitingApproval = false; sheetLocked = false; closeSheet(); toast('Добро пожаловать', 'Заявку одобрили'); }
     const prev = new Map(server.map(e => [e.id, e]));
-    server = (r && r.entries) || []; store(KEYS.cache, server);
+    const prevInc = new Set(links.incoming);
+    applyState(st); store(KEYS.cache, st);
     entries = applyPending(server);
+    const newInc = links.incoming.filter(x => !prevInc.has(x) && P[x]);
+    if (!firstSync && newInc.length) toast('Стучатся', `${P[newInc[0]].name} хочет видеть ваш календарь`);
     if (!firstSync || prev.size) announce(prev);
     firstSync = false;
     setSync('');
     render();
   } catch(e){
-    if (e.auth){ auth.key = ''; store(KEYS.auth, auth); openLogin('Код семьи не подошёл — введите снова.'); }
+    if (e.auth){ auth.token = ''; store(KEYS.auth, auth); openLogin('Ключ не подошёл — войдите снова.'); }
+    else if (e.blocked) openLogin('Доступ к календарю закрыт.');
     else setSync(pending.length ? `Не отправлено: ${pending.length}` : 'Офлайн');
   } finally {
     syncing = false;
@@ -178,7 +218,7 @@ function announce(prev){
 
 /* ---------- вид ---------- */
 const state = { y:TODAY.getFullYear(), m:TODAY.getMonth(), sy:TODAY.getFullYear(), sm:TODAY.getMonth(), sel:TODAY_K,
-                view:'four', visible:new Set(PEOPLE.map(p=>p.id)), extra:0 };
+                view:'four', hidden:new Set(), extra:0 };
 const MULTI = {four:4, year:12};
 const MULTI_T = {four:'4 месяца', year:'Год'};
 const isMulti = v => v in MULTI;
@@ -193,12 +233,24 @@ function applyTheme(){
   const root = document.documentElement;
   if (themeName === 'auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', themeName);
   const dark = themeName === 'dark' || (themeName === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
-  document.querySelectorAll('meta[name=theme-color]').forEach(m => m.content = dark ? '#000000' : '#F2F2F7');
+  root.classList.toggle('dk', dark);
+  const bg = getComputedStyle(document.body).backgroundColor;
+  document.querySelectorAll('meta[name=theme-color]').forEach(m => m.content = bg);
+}
+// оформление (iOS / One UI / Мягкий) и раскладка обзора (2×2 / столбик)
+const SKINS = [['ios','iOS'],['oneui','One UI'],['soft','Мягкий']];
+let skinName = load(KEYS.skin, 'ios'); if (!SKINS.some(x => x[0] === skinName)) skinName = 'ios';
+let layName = load(KEYS.lay, 'grid'); if (!['grid','col'].includes(layName)) layName = 'grid';
+function applySkin(){
+  SKINS.forEach(([k]) => document.body.classList.toggle('skin-' + k, k === skinName));
+  document.body.classList.toggle('lay-col', layName === 'col');
+  const b = $('skinBtn'); if (b) b.textContent = 'Вид: ' + SKINS.find(x => x[0] === skinName)[1];
+  if (typeof themeName !== 'undefined') applyTheme();
 }
 applyTheme();
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
 
-const vis = () => PEOPLE.filter(p => state.visible.has(p.id));
+const vis = () => PEOPLE.filter(p => !state.hidden.has(p.id));
 function busyMap(){
   const map = {};
   for (const e of entries){
@@ -218,7 +270,7 @@ function fmtRange(a,b){
   return `${fmtDay(a)} – ${fmtDay(b)}`;
 }
 function joinNames(ids){
-  const n = ids.filter(i => P[i]).map(i => P[i].name);
+  const n = ids.filter(i => P[i]).map(i => esc(P[i].name));
   return n.length < 2 ? (n[0]||'') : n.slice(0,-1).join(', ') + ' и ' + n[n.length-1];
 }
 const waiting = e => Object.keys(e.inv || {}).filter(p => e.inv[p] === 'wait' && P[p]);
@@ -226,13 +278,19 @@ const waiting = e => Object.keys(e.inv || {}).filter(p => e.inv[p] === 'wait' &&
 /* ---------- отрисовка ---------- */
 function renderPeople(){
   $('people').innerHTML = PEOPLE.map(p =>
-    `<button class="chip press" style="--c:${p.color}" data-person="${p.id}" aria-pressed="${state.visible.has(p.id)}"><span class="dot"></span>${p.name}</button>`).join('');
+    `<button class="chip press" style="--c:${p.color}" data-person="${p.id}" aria-pressed="${!state.hidden.has(p.id)}"><span class="dot"></span>${esc(p.name)}</button>`).join('');
 }
 function renderInvites(){
   const me = ME();
   const list = entries.filter(e => e.inv && e.inv[me] === 'wait' && e.to >= TODAY_K).sort((a,b) => a.from.localeCompare(b.from));
-  $('invs').innerHTML = (state.view === 'month' ? '' : installCardHTML()) + list.map(e => { const by = owner(e); return `<div class="inv" style="--c:${P[by].color}">
-    <div style="min-width:0"><div class="who">${P[by].name} зовёт</div><div class="what">${esc(e.what)}</div><div class="meta">${fmtRange(e.from,e.to)}</div></div>
+  const knocks = links.incoming.filter(id => P[id]).map(id => `<div class="inv" style="--c:${P[id].color}">
+    <div style="min-width:0"><div class="who">Стучится к вам</div><div class="what">${esc(P[id].name)}</div><div class="meta">@${id}</div></div>
+    <div class="invB"><button class="yes press" data-link="${id}" data-la="accept">Принять</button><button class="no press" data-link="${id}" data-la="drop">Нет</button></div></div>`).join('');
+  const np = users.filter(u => u.status === 'pending').length;
+  const adm = np && state.view !== 'list' ? `<div class="inv" style="--c:#FF9F0A"><div style="min-width:0"><div class="who">Разработчику</div><div class="what">Новых заявок: ${np}</div></div>
+    <div class="invB"><button class="yes press" data-view="list">Открыть</button></div></div>` : '';
+  $('invs').innerHTML = (state.view === 'month' ? '' : installCardHTML()) + adm + knocks + list.map(e => { const by = owner(e); return `<div class="inv" style="--c:${P[by].color}">
+    <div style="min-width:0"><div class="who">${esc(P[by].name)} зовёт</div><div class="what">${esc(e.what)}</div><div class="meta">${fmtRange(e.from,e.to)}</div></div>
     <div class="invB"><button class="yes press" data-rsvp="${e.id}" data-ans="yes">Иду</button><button class="no press" data-rsvp="${e.id}" data-ans="no">Не иду</button></div></div>`; }).join('');
   $('invs').hidden = !$('invs').innerHTML;
 }
@@ -406,16 +464,46 @@ function settingsHTML(){
   let h = `<div class="set">
     <div class="setRow"><div class="k">Тема</div>${seg('theme', themeName, [['auto','Авто'],['light','Светлая'],['dark','Тёмная']])}</div>
     <div class="setRow"><div><div class="k">Установка на телефон</div><div class="v">${standalone ? 'Установлено' : 'Инструкция для iPhone и Android'}</div></div><button class="lnk press" data-act="howto">Как</button></div>
+    <div class="setRow"><div class="k">Стиль</div>${seg('skin', skinName, SKINS)}</div>
+    <div class="setRow"><div class="k">Обзор</div>${seg('lay', layName, [['grid','2×2'],['col','Столбик']])}</div>
     <div class="setRow"><div class="k">Полосы</div>${seg('style', styleName, [['s1','Стекло'],['s2','Матовый'],['s3','Пастель']])}</div>`;
   if (!ONLINE) h += `<div class="setRow"><div><div class="k">Демо-режим · вы — ${P[ME()].name}</div><div class="v">Данные только на этом устройстве</div></div><button class="lnk press" data-act="reset">Сбросить</button></div>`;
-  else {
-    const pushNote = pushOn ? 'Придут, когда кто-то добавит дело или позовёт'
+  else if (meInfo) {
+    const pushNote = pushOn ? 'Приглашения, запросы и дела ваших связей'
       : (isIOS && !standalone) ? 'На iPhone сначала: Поделиться → «На экран Домой»'
-      : 'Пуш, когда кто-то добавит дело или позовёт';
-    h += `<div class="setRow"><div><div class="k">Вы — ${esc(P[ME()].name)}</div><div class="v">${pending.length ? `Не отправлено изменений: ${pending.length}` : 'Всё синхронизировано'}</div></div><button class="lnk press" data-act="login">Сменить</button></div>
-      <div class="setRow"><div><div class="k">Уведомления</div><div class="v">${pushNote}</div></div><button class="lnk press${pushOn ? ' on' : ''}" data-act="push">${pushOn ? 'Включены' : 'Включить'}</button></div>`;
+      : 'Пуш о приглашениях, запросах и делах связей';
+    h += `<div class="setRow"><div><div class="k">${esc(meInfo.name)} · @${meInfo.id}</div><div class="v">${pending.length ? `Не отправлено изменений: ${pending.length}` : 'Всё синхронизировано'}</div></div><button class="lnk press" data-act="profile">Профиль</button></div>
+      <div class="setRow"><div><div class="k">Уведомления</div><div class="v">${pushNote}</div></div><button class="lnk press${pushOn ? ' on' : ''}" data-act="push">${pushOn ? 'Включены' : 'Включить'}</button></div>
+      <div class="setRow"><div><div class="k">О делах всех связей</div><div class="v">${meInfo.pushAll ? 'Пуш о каждом новом деле' : 'Только приглашения и запросы'}</div></div><button class="lnk press${meInfo.pushAll ? ' on' : ''}" data-act="pushAll">${meInfo.pushAll ? 'Да' : 'Нет'}</button></div>
+      <div class="setRow"><div><div class="k">Ключ входа</div><div class="v">Чтобы войти на другом телефоне</div></div><button class="lnk press" data-act="showKey">Показать</button></div>`;
   }
   return h + `</div><p class="itv"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h12M9 4v16" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" fill="none"/><path d="M12 8l4.5 12L21 8" stroke="#FF2E93" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>itivan</p>`;
+}
+function personRow(id, right, sub){
+  const p = P[id] || {name:id, color:'#8E8E93'};
+  return `<div class="prow" style="--c:${p.color}"><span class="dot"></span><div style="min-width:0"><div>${esc(p.name)}</div><div class="v">@${id}${sub ? ' · ' + sub : ''}</div></div><span class="st">${right}</span></div>`;
+}
+function peopleHTML(){
+  let h = `<div class="sec" style="margin-top:28px">Люди</div><div class="set">`;
+  h += `<div class="setRow"><div><div class="k">Позвать нового человека</div><div class="v">Только по ссылке — со стороны не зарегистрироваться</div></div><button class="lnk on press" data-act="invite">Пригласить</button></div>`;
+  h += `<div class="setRow knock"><input class="in" id="kNick" placeholder="@ник человека" autocomplete="off" autocapitalize="off" spellcheck="false"><button class="lnk press" data-act="knock">Постучаться</button></div>`;
+  for (const id of links.incoming) h += personRow(id, `<button class="lnk on press" data-link="${id}" data-la="accept">Принять</button> <button class="lnk press" data-link="${id}" data-la="drop">Нет</button>`, 'стучится');
+  for (const id of links.outgoing) h += personRow(id, `<button class="lnk press" data-link="${id}" data-la="drop">Отменить</button>`, 'ждём ответа');
+  for (const id of links.friends.filter(id => P[id]).sort((a,b) => P[a].name.localeCompare(P[b].name, 'ru')))
+    h += personRow(id, `<button class="lnk press" data-link="${id}" data-la="remove">Убрать</button>`);
+  if (!links.friends.length && !links.incoming.length && !links.outgoing.length) h += `<div class="setRow"><div class="v">Пока никого. Пришлите близким ссылку-приглашение или постучитесь к тем, кто уже здесь, по @нику.</div></div>`;
+  return h + `</div>`;
+}
+function adminHTML(){
+  const pend = users.filter(u => u.status === 'pending').sort((a,b) => (a.ts||0) - (b.ts||0));
+  const rest = users.filter(u => u.status !== 'pending' && u.id !== ME()).sort((a,b) => a.name.localeCompare(b.name, 'ru'));
+  let h = `<div class="sec" style="margin-top:28px">Разработчик</div><div class="set">`;
+  if (!pend.length && !rest.length) h += `<div class="setRow"><div class="v">Пока только вы.</div></div>`;
+  for (const u of pend) h += `<div class="prow" style="--c:${u.color}"><span class="dot"></span><div style="min-width:0"><div>${esc(u.name)}</div><div class="v">@${u.id} · заявка</div></div><span class="st">
+    <button class="lnk on press" data-adm="${u.id}" data-aa="approve">Одобрить</button> <button class="lnk press" data-adm="${u.id}" data-aa="reject">Отклонить</button></span></div>`;
+  for (const u of rest) h += `<div class="prow" style="--c:${u.color}"><span class="dot"></span><div style="min-width:0"><div>${esc(u.name)}</div><div class="v">@${u.id}${u.status === 'blocked' ? ' · заблокирован' : ''}</div></div><span class="st">
+    <button class="lnk press" data-adm="${u.id}" data-aa="newkey">Ключ</button> <button class="lnk press" data-adm="${u.id}" data-aa="${u.status === 'blocked' ? 'unblock' : 'block'}">${u.status === 'blocked' ? 'Вернуть' : 'Блок'}</button></span></div>`;
+  return h + `</div>`;
 }
 function renderList(){
   const fr = freeRanges(60).slice(0,6);
@@ -425,6 +513,8 @@ function renderList(){
                  : `<div class="empty">В ближайшие два месяца нет дней, когда свободны все.</div>`;
   h += `<div class="sec">Дела по порядку</div>`;
   h += up.length ? up.map(evHTML).join('') : `<div class="empty">Пока никто ничего не запланировал.</div>`;
+  h += peopleHTML();
+  if (meInfo && meInfo.admin) h += adminHTML();
   h += settingsHTML();
   $('vList').innerHTML = h;
 }
@@ -488,9 +578,11 @@ function openForm(e, date){
 }
 function pickHTML(){
   const me = ME();
-  return PEOPLE.filter(p => p.id !== me).map(p => {
+  const fr = PEOPLE.filter(p => p.id !== me && links.friends.includes(p.id));
+  if (!fr.length) return '<div class="hint" style="margin:0">Позвать можно тех, с кем есть связь. Добавьте людей во вкладке «Ближайшее» → Люди.</div>';
+  return fr.map(p => {
     const on = form.people.has(p.id), st = on && form.src ? statusOf(form.src, p.id) : '';
-    return `<button type="button" class="chip press" style="--c:${p.color}" data-pick="${p.id}" aria-pressed="${on}"><span class="dot"></span>${p.name}${on ? ` <small>${st || 'позовём'}</small>` : ''}</button>`;
+    return `<button type="button" class="chip press" style="--c:${p.color}" data-pick="${p.id}" aria-pressed="${on}"><span class="dot"></span>${esc(p.name)}${on ? ` <small>${st || 'позовём'}</small>` : ''}</button>`;
   }).join('');
 }
 function saveForm(){
@@ -532,8 +624,8 @@ function openView(e){
   else if (st === 'no') btns = `<button class="btn ok press" data-rsvp="${e.id}" data-ans="yes">Передумал${P[me].f ? 'а' : ''} — иду</button>`;
   else if (mine) btns = `<button class="btn ghost press" data-rsvp="${e.id}" data-ans="no">Не пойду</button>`;
   openSheet(`<h2>${esc(e.what)}</h2><div class="hint">${fmtRange(e.from,e.to)}</div>
-    <div class="plist">${people.map(p => `<div class="prow" style="--c:${P[p].color}"><span class="dot"></span>${P[p].name}<span class="st">${statusOf(e,p)}</span></div>`).join('')}</div>
-    ${btns || `<div class="hint" style="margin-top:14px">Изменить может только ${P[by].name}.</div>`}`);
+    <div class="plist">${people.map(p => `<div class="prow" style="--c:${P[p].color}"><span class="dot"></span>${esc(P[p].name)}<span class="st">${statusOf(e,p)}</span></div>`).join('')}</div>
+    ${btns || `<div class="hint" style="margin-top:14px">Изменить может только ${esc(P[by].name)}.</div>`}`);
 }
 function rsvp(id, ans){
   const e = entries.find(x => x.id === id); if (!e) return;
@@ -543,33 +635,151 @@ function rsvp(id, ans){
   toast(ans === 'yes' ? 'Идёшь' : 'Не идёшь', `${e.what}, ${fmtRange(e.from,e.to)} — ${P[owner(e)].name} узнает`);
 }
 
-/* ---------- вход: код семьи + кто я ---------- */
-let loginWho = null;
+/* ---------- вход и регистрация ---------- */
+let regColor = COLORS[5], regF = false, loginTab = 'reg';
 function openLogin(msg){
-  loginWho = auth.me && P[auth.me] ? auth.me : null;
-  const first = !auth.key || !auth.me;
-  openSheet(`<h2>${first ? 'Добро пожаловать' : 'Вход'}</h2>
-    <div class="hint">${msg ? esc(msg) : 'Введите код семьи и выберите, кто вы.'}</div>
-    <label class="f" for="lKey">Код семьи</label>
-    <input class="in" id="lKey" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(auth.key || '')}">
-    <label class="f">Кто вы</label>
-    <div class="whoPick">${PEOPLE.map(p => `<button type="button" class="chip press" style="--c:${p.color}" data-me="${p.id}" aria-pressed="${loginWho === p.id}"><span class="dot"></span>${p.name}</button>`).join('')}</div>
+  const canReg = !!(inviteCode && inviter);
+  if (!canReg) loginTab = 'key';
+  const tabs = canReg ? seg('ltab', loginTab, [['reg','Регистрация'],['key','У меня есть ключ']]) : '';
+  const body = loginTab === 'reg' ? `
+    <label class="f" for="rName">Как вас зовут</label>
+    <input class="in" id="rName" maxlength="24" placeholder="Например: Лера">
+    <label class="f" for="rNick">Ник — по нему вас найдут</label>
+    <input class="in" id="rNick" maxlength="21" placeholder="@lera" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <label class="f">Писать о вас</label>
+    ${seg('rf', regF ? 'f' : 'm', [['m','добавил'],['f','добавила']])}
+    <label class="f">Ваш цвет</label>
+    <div class="colors">${COLORS.map(c => `<button type="button" class="cl press" style="--c:${c}" data-rc="${c}" aria-pressed="${c === regColor}" aria-label="Цвет ${c}"></button>`).join('')}</div>
     <div class="err" id="lErr"></div>
-    <button class="btn press" data-act="doLogin">Войти</button>`, first || !auth.key);
+    <button class="btn press" data-act="register">Присоединиться</button>` : `
+    <label class="f" for="lKey">Ключ входа</label>
+    <input class="in" id="lKey" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Ключ из настроек на другом телефоне">
+    <div class="err" id="lErr"></div>
+    <button class="btn press" data-act="keyLogin">Войти</button>
+    ${canReg ? '' : '<div class="hint" style="margin-top:12px">Новые люди попадают сюда только по приглашению. Попросите ссылку у того, кто уже пользуется.</div>'}`;
+  const lead = msg ? esc(msg) : canReg ? `<b>${esc(inviter.name)}</b> зовёт вас в общий календарь: будете видеть, кто когда занят.` : 'Общий календарь для близких: видно, кто когда занят.';
+  openSheet(`<h2>Кто когда</h2><div class="hint">${lead}</div>
+    ${tabs ? `<div style="margin-top:14px">${tabs}</div>` : ''}${body}`, !auth.token);
 }
-async function doLogin(){
+async function doRegister(){
+  const name = $('rName').value.trim(), nick = $('rNick').value.trim().replace(/^@/, '').toLowerCase(), err = $('lErr');
+  if (!name) return err.textContent = 'Напишите имя.';
+  if (!/^[a-z0-9_]{3,20}$/.test(nick)) return err.textContent = 'Ник: 3–20 латинских букв, цифр или _.';
+  err.textContent = 'Отправляю…';
+  try {
+    const r = await api('POST', '/register', {invite:inviteCode, nick, name, f:regF, color:regColor});
+    auth = {token:r.token, me:nick}; store(KEYS.auth, auth);
+    inviteCode = null; sheetLocked = false;
+    openSheet(`<h2>Готово, ${esc(name)}!</h2>
+      <div class="hint">Вы и ${esc(inviter.name)} уже видите календари друг друга.</div>
+      ${keyBlock(isIOS && !standalone
+        ? 'Сейчас: Поделиться → «На экран „Домой“», откройте приложение с иконки и войдите этим ключом — на iPhone приложение с экрана не видит вход из Safari.'
+        : 'Сохраните ключ: с ним можно войти на другом телефоне. Он же есть в настройках.')}
+      <button class="btn press" data-act="closeSheet">Открыть календарь</button>`);
+    sync();
+  } catch(e){ err.textContent = e.user || 'Нет связи с сервером. Попробуйте позже.'; }
+}
+// открыли ссылку-приглашение
+async function handleInvite(){
+  if (!inviteCode || !ONLINE) return;
+  try { inviter = (await api('GET', '/invite/' + inviteCode)).by; }
+  catch(e){ inviteCode = null; if (!auth.token) openLogin('Приглашение устарело или уже использовано. Попросите новую ссылку.'); else toast('Приглашение', 'Ссылка устарела или уже использована'); return; }
+  if (!auth.token){ loginTab = 'reg'; openLogin(); return; }
+  if (inviter.id === ME()){ inviteCode = null; toast('Это ваша ссылка', 'Отправьте её тому, кого зовёте'); return; }
+  openSheet(`<h2>Приглашение</h2><div class="hint"><b>${esc(inviter.name)}</b> (@${inviter.id}) зовёт вас — будете видеть календари друг друга.</div>
+    <button class="btn ok press" data-act="acceptInvite">Принять</button><button class="btn plain press" data-act="closeSheet">Не сейчас</button>`);
+}
+async function acceptInvite(){
+  try { const r = await api('POST', '/invites/' + inviteCode); closeSheet(); toast('Готово', `${r.by.name} теперь в ваших связях`); }
+  catch(e){ toast('Не получилось', e.user || 'Нет связи с сервером'); }
+  inviteCode = null; sync();
+}
+async function makeInvite(){
+  if (!ONLINE) return toast('Демо-режим', 'Приглашения работают после входа');
+  try {
+    const {code} = await api('POST', '/invites');
+    const url = location.origin + location.pathname.replace(/index\.html$/, '') + '#i=' + code;
+    window.__inviteUrl = url;
+    openSheet(`<h2>Ссылка-приглашение</h2><div class="hint">Одноразовая, работает 7 дней. Кто откроет — зарегистрируется, и вы сразу увидите календари друг друга.</div>
+      <label class="f">Ссылка</label><div class="keybox" id="keyBox">${esc(url)}</div>
+      ${navigator.share ? '<button class="btn press" data-act="shareInvite">Отправить</button>' : ''}
+      <button class="btn plain press" data-act="copyKey">Скопировать</button>`);
+  } catch(e){ toast('Не получилось', e.user || 'Нет связи с сервером'); }
+}
+async function doKeyLogin(){
   const k = $('lKey').value.trim(), err = $('lErr');
-  if (!k) return err.textContent = 'Введите код семьи.';
-  if (!loginWho) return err.textContent = 'Выберите, кто вы.';
+  if (!/^[A-Za-z0-9_-]{16,64}$/.test(k)) return err.textContent = 'Ключ выглядит не так. Скопируйте его целиком.';
   err.textContent = 'Проверяю…';
-  const old = auth.key; auth.key = k;
-  try { await api('GET', '/ping'); }
-  catch(e){ auth.key = old; err.textContent = e.auth ? 'Код не подошёл.' : 'Нет связи с сервером. Попробуйте позже.'; return; }
-  const meChanged = auth.me !== loginWho;
-  auth.me = loginWho; store(KEYS.auth, auth);
+  const old = auth; auth = {token:k};
+  try { await api('GET', '/state'); }
+  catch(e){ auth = old; err.textContent = e.auth ? 'Ключ не подошёл.' : e.blocked ? 'Доступ закрыт.' : 'Нет связи с сервером.'; return; }
+  store(KEYS.auth, auth); pending = []; store(KEYS.pending, pending);
   sheetLocked = false; closeSheet();
-  if (meChanged && pushOn) subscribePush(false);
+  if (pushOn) subscribePush(false);
   await sync(); render();
+}
+function openWaiting(fresh){
+  openSheet(`<h2>Заявка отправлена</h2>
+    <div class="hint">${meInfo ? esc(meInfo.name) + ' · @' + meInfo.id : ''}. Как только разработчик одобрит, календарь откроется сам.</div>
+    ${fresh ? keyBlock('Сохраните ключ — с ним можно войти на другом телефоне. Он же есть в настройках.') : ''}
+    <button class="btn plain press" data-act="recheck">Проверить ещё раз</button>
+    <button class="btn ghost press" data-act="logout">Выйти</button>`, true);
+}
+const keyBlock = hint => `<label class="f">Ключ входа</label><div class="keybox" id="keyBox">${esc(auth.token || '')}</div>
+  <button class="btn plain press" data-act="copyKey">Скопировать ключ</button><div class="hint">${hint}</div>`;
+function openProfile(){
+  regColor = meInfo.color; regF = meInfo.f;
+  openSheet(`<h2>Профиль</h2><div class="hint">@${meInfo.id}</div>
+    <label class="f" for="rName">Имя</label><input class="in" id="rName" maxlength="24" value="${esc(meInfo.name)}">
+    <label class="f">Писать о вас</label>${seg('rf', regF ? 'f' : 'm', [['m','добавил'],['f','добавила']])}
+    <label class="f">Цвет</label>
+    <div class="colors">${COLORS.map(c => `<button type="button" class="cl press" style="--c:${c}" data-rc="${c}" aria-pressed="${c === regColor}" aria-label="Цвет ${c}"></button>`).join('')}</div>
+    <div class="err" id="lErr"></div>
+    <button class="btn press" data-act="saveProfile">Сохранить</button>
+    <button class="btn ghost press" data-act="logout">Выйти на этом телефоне</button>`);
+}
+async function saveProfile(){
+  const name = $('rName').value.trim();
+  if (!name) return $('lErr').textContent = 'Напишите имя.';
+  try { await api('PATCH', '/me', {name, color:regColor, f:regF}); closeSheet(); sync(); toast('Профиль', 'Сохранено'); }
+  catch(e){ $('lErr').textContent = e.user || 'Нет связи с сервером.'; }
+}
+async function linkAction(id, la){
+  if (!ONLINE) return toast('Демо-режим', 'Связи работают после входа');
+  try {
+    if (la === 'accept' || la === 'knock') {
+      const r = await api('POST', '/links/' + encodeURIComponent(id));
+      toast(r.state === 'friends' ? 'Готово' : 'Запрос отправлен', r.state === 'friends' ? 'Теперь вы видите календари друг друга' : `@${id} увидит его и ответит`);
+    } else {
+      await api('DELETE', '/links/' + encodeURIComponent(id));
+      toast(la === 'remove' ? 'Связь удалена' : 'Готово', la === 'remove' ? 'Вы больше не видите календари друг друга' : 'Запрос убран');
+    }
+  } catch(e){ toast('Не получилось', e.user || 'Нет связи с сервером'); }
+  sync();
+}
+async function adminAction(id, aa){
+  try {
+    const r = await api('POST', '/admin/users/' + encodeURIComponent(id), {action:aa, link: aa === 'approve'});
+    if (aa === 'newkey' && r.token){
+      openSheet(`<h2>Новый ключ</h2><div class="hint">Для @${esc(id)}. Старый ключ больше не работает — перешлите этот человеку.</div>
+        <label class="f">Ключ входа</label><div class="keybox" id="keyBox">${esc(r.token)}</div><button class="btn plain press" data-act="copyKey">Скопировать</button>`);
+    } else toast('Готово', {approve:'Заявка одобрена', reject:'Заявка отклонена', block:'Заблокирован', unblock:'Доступ возвращён'}[aa] || 'Сделано');
+  } catch(e){ toast('Не получилось', e.user || 'Нет связи с сервером'); }
+  sync();
+}
+function copyKey(){
+  const box = $('keyBox'); if (!box) return;
+  const t = box.textContent;
+  const done = () => toast('Готово', 'Скопировано');
+  const fallback = () => { const r = document.createRange(); r.selectNodeContents(box); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast('Выделено', 'Скопируйте вручную'); };
+  try { navigator.clipboard.writeText(t).then(done, fallback); } catch(_){ fallback(); }
+}
+function logout(){
+  unsubscribePush(true).finally(() => {
+    auth = {}; store(KEYS.auth, auth); store(KEYS.cache, null); pending = []; store(KEYS.pending, pending);
+    S = null; meInfo = null; server = []; entries = []; users = []; links = {friends:[], incoming:[], outgoing:[]}; setPeople([], []);
+    waitingApproval = false; sheetLocked = false; closeSheet(); render(); openLogin();
+  });
 }
 
 /* ---------- пуш-уведомления ---------- */
@@ -587,21 +797,22 @@ async function subscribePush(ask){
     const reg = await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
     if (!sub){
-      const vapid = CONFIG.VAPID_PUBLIC || ((await api('GET','/ping')) || {}).vapid;
+      const vapid = CONFIG.VAPID_PUBLIC || (S && S.vapid);
       if (!vapid) return toast('Уведомления', 'На сервере не заданы VAPID-ключи');
       sub = await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:b64ToU8(vapid)});
     }
-    await api('POST', '/subscribe', {person:ME(), sub:sub.toJSON()});
+    await api('POST', '/subscribe', {sub:sub.toJSON()});
     pushOn = true; render();
     if (ask) toast('Уведомления', 'Включены');
   } catch(e){ toast('Уведомления', 'Не получилось включить, попробуйте позже'); }
 }
-async function unsubscribePush(){
+async function unsubscribePush(quiet){
   try {
-    const reg = await navigator.serviceWorker.ready, sub = await reg.pushManager.getSubscription();
+    const reg = 'serviceWorker' in navigator && await navigator.serviceWorker.getRegistration();
+    const sub = reg && reg.pushManager && await reg.pushManager.getSubscription();
     if (sub){ await api('POST', '/unsubscribe', {endpoint:sub.endpoint}).catch(() => {}); await sub.unsubscribe(); }
   } catch(e){}
-  pushOn = false; render(); toast('Уведомления', 'Выключены');
+  pushOn = false; if (!quiet){ render(); toast('Уведомления', 'Выключены'); }
 }
 
 let tt;
@@ -615,10 +826,16 @@ document.addEventListener('click', ev => {
   const t = ev.target.closest('button'); if (!t) return;
   const d = t.dataset;
   if (d.theme){ themeName = d.theme; store(KEYS.theme, themeName); applyTheme(); render(); return; }
+  if (d.skin){ skinName = d.skin; store(KEYS.skin, skinName); applySkin(); render(); return; }
+  if (d.lay){ layName = d.lay; store(KEYS.lay, layName); applySkin(); render(); return; }
   if (d.style){ styleName = d.style; store(KEYS.style, styleName); applyStyle(); render(); return; }
-  if (d.person){ state.visible.has(d.person) ? state.visible.delete(d.person) : state.visible.add(d.person); render(); return; }
+  if (d.person){ state.hidden.has(d.person) ? state.hidden.delete(d.person) : state.hidden.add(d.person); render(); return; }
   if (d.pick){ form.people.has(d.pick) ? form.people.delete(d.pick) : form.people.add(d.pick); $('pick').innerHTML = pickHTML(); return; }
-  if (d.me){ loginWho = d.me; document.querySelectorAll('[data-me]').forEach(b => b.setAttribute('aria-pressed', b.dataset.me === loginWho)); return; }
+  if (d.ltab){ loginTab = d.ltab; openLogin(); return; }
+  if (d.rf){ regF = d.rf === 'f'; t.parentNode.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === t)); return; }
+  if (d.rc){ regColor = d.rc; document.querySelectorAll('[data-rc]').forEach(b => b.setAttribute('aria-pressed', b.dataset.rc === regColor)); return; }
+  if (d.link){ linkAction(d.link, d.la); return; }
+  if (d.adm){ if (d.aa === 'reject' && t.dataset.sure !== '1'){ t.dataset.sure = '1'; t.textContent = 'Точно?'; return; } adminAction(d.adm, d.aa); return; }
   if (d.rsvp){ rsvp(d.rsvp, d.ans); return; }
   if (d.day){ // день в ленте месяцев
     const dt = parse(d.day), i = mIdx(dt.getFullYear(), dt.getMonth());
@@ -654,14 +871,30 @@ document.addEventListener('click', ev => {
     case 'delete': deleteForm(); break;
     case 'reset': entries = demo(); store(KEYS.demo, entries); render(); toast('Готово', 'Тестовые данные восстановлены'); break;
     case 'howto': openHowto(); break;
+    case 'skinNext': { const i = SKINS.findIndex(x => x[0] === skinName); skinName = SKINS[(i+1) % SKINS.length][0]; store(KEYS.skin, skinName); applySkin(); render(); break; }
     case 'install': doInstall(); break;
     case 'instHide': store(KEYS.inst, 1); render(); break;
-    case 'login': openLogin(); break;
-    case 'doLogin': doLogin(); break;
+    case 'register': doRegister(); break;
+    case 'invite': makeInvite(); break;
+    case 'shareInvite': navigator.share({title:'Кто когда', text:'Зову в общий календарь «Кто когда»', url:window.__inviteUrl}).catch(() => {}); break;
+    case 'acceptInvite': acceptInvite(); break;
+    case 'closeSheet': sheetLocked = false; closeSheet(); render(); break;
+    case 'keyLogin': doKeyLogin(); break;
+    case 'recheck': sync(); break;
+    case 'logout': logout(); break;
+    case 'profile': openProfile(); break;
+    case 'saveProfile': saveProfile(); break;
+    case 'copyKey': copyKey(); break;
+    case 'showKey': openSheet(`<h2>Ключ входа</h2>${keyBlock('На другом телефоне: «У меня есть ключ» и вставить. Никому не пересылайте — с ним входят от вашего имени.')}`); break;
+    case 'knock': { const v = ($('kNick').value || '').trim().replace(/^@/, '').toLowerCase();
+      if (!/^[a-z0-9_]{3,20}$/.test(v)) { toast('Ник', 'Введите @ник целиком: латиница, цифры, _'); break; }
+      linkAction(v, 'knock'); break; }
+    case 'pushAll': api('PATCH', '/me', {pushAll: !meInfo.pushAll}).then(sync).catch(() => toast('Не получилось', 'Нет связи с сервером')); break;
     case 'push': pushOn ? unsubscribePush() : subscribePush(true); break;
   }
 });
 // лёгкая вибрация на нажатие (Android; iPhone из браузера не умеет)
+document.addEventListener('change', e => { if (e.target.id === 'admLink') store('kk-admlink', e.target.checked); });
 document.addEventListener('pointerdown', e => { if (e.target.closest('button') && navigator.vibrate) try { navigator.vibrate(50); } catch(_){} }, {passive:true});
 
 function shiftMulti(dir){
@@ -680,6 +913,8 @@ addEventListener('resize', () => { if (state.view === 'month'){ const s = $('str
   }); }
 
 /* ---------- запуск ---------- */
+if (!ONLINE){ const b = document.createElement('button'); b.id = 'skinBtn'; b.className = 'skinBtn press'; b.dataset.act = 'skinNext'; document.body.appendChild(b); }
+applySkin();
 if ('serviceWorker' in navigator && location.protocol === 'https:' && !/claude/.test(location.host))
   navigator.serviceWorker.register('sw.js').then(() => ONLINE && refreshPushState()).catch(() => {});
 render();
@@ -689,7 +924,8 @@ document.addEventListener('visibilitychange', () => {
   if (ONLINE) sync();
 });
 if (ONLINE){
-  if (!auth.key || !auth.me) openLogin();
+  if (inviteCode) handleInvite().then(() => auth.token && sync());
+  else if (!auth.token) openLogin();
   else sync();
   setInterval(() => { if (document.visibilityState === 'visible') sync(); }, 30000);
   addEventListener('online', sync);
