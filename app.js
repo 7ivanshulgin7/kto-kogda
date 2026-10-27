@@ -547,6 +547,7 @@ function peopleHTML(){
   let h = `<div class="sec" style="margin-top:28px">Люди</div><div class="set">`;
   h += `<div class="setRow"><div><div class="k">Позвать нового человека</div><div class="v">Только по ссылке — со стороны не зарегистрироваться</div></div><button class="lnk on press" data-act="invite">Пригласить</button></div>`;
   h += `<div class="setRow knock"><input class="in" id="kNick" placeholder="@ник человека" autocomplete="off" autocapitalize="off" spellcheck="false"><button class="lnk press" data-act="knock">Постучаться</button></div>`;
+  h += `<div class="sugg" id="kSugg" hidden></div>`;
   for (const id of links.incoming) h += personRow(id, `<button class="lnk on press" data-link="${id}" data-la="accept">Принять</button> <button class="lnk press" data-link="${id}" data-la="drop">Нет</button>`, 'стучится');
   for (const id of links.outgoing) h += personRow(id, `<button class="lnk press" data-link="${id}" data-la="drop">Отменить</button>`, 'ждём ответа');
   for (const id of links.friends.filter(id => P[id]).sort((a,b) => P[a].name.localeCompare(P[b].name, 'ru')))
@@ -1137,6 +1138,7 @@ document.addEventListener('click', ev => {
   if (d.rf){ regF = d.rf === 'f'; t.parentNode.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === t)); return; }
   if (d.rc){ regColor = d.rc; document.querySelectorAll('[data-rc]').forEach(b => b.setAttribute('aria-pressed', b.dataset.rc === regColor)); return; }
   if (d.link){ linkAction(d.link, d.la); return; }
+  if (d.sugg){ $('kSugg').hidden = true; $('kNick').value = ''; linkAction(d.sugg, 'knock'); return; }
   if (d.adm){ if (d.aa === 'reject' && t.dataset.sure !== '1'){ t.dataset.sure = '1'; t.textContent = 'Точно?'; return; } adminAction(d.adm, d.aa); return; }
   if (d.rsvp){ rsvp(d.rsvp, d.ans); return; }
   if (d.answ){ const e = entries.find(x => x.id === d.answ); commit({op:'answer', id:d.answ, who:d.who, ans:d.ans}); render();
@@ -1203,6 +1205,27 @@ document.addEventListener('click', ev => {
 });
 // лёгкая вибрация на нажатие (Android; iPhone из браузера не умеет)
 document.addEventListener('toggle', e => { const k = e.target.dataset && e.target.dataset.blk; if (k){ e.target.open ? openBlk.add(k) : openBlk.delete(k); store('kk-blk', [...openBlk]); return; } if (e.target.id === 'guideBox'){ guideOpen = e.target.open; if (guideOpen) store('kk-guide', 1); } }, true);
+// подсказки при вводе ника в «Постучаться»
+let suggT = null, suggQ = '';
+document.addEventListener('input', e => {
+  if (e.target.id !== 'kNick') return;
+  const q = e.target.value.trim().replace(/^@/, '').toLowerCase();
+  clearTimeout(suggT);
+  if (q.length < 2 || !ONLINE){ $('kSugg').hidden = true; return; }
+  suggT = setTimeout(async () => {
+    suggQ = q;
+    let list = [];
+    try { list = ((await api('GET', '/search/' + encodeURIComponent(q))) || {}).people || []; } catch(_){ return; }
+    if (suggQ !== q || !$('kSugg')) return;
+    const box = $('kSugg');
+    box.innerHTML = list.length ? list.map(p => {
+      const st = links.friends.includes(p.id) ? 'уже в людях' : links.outgoing.includes(p.id) ? 'ждём ответа' : links.incoming.includes(p.id) ? 'принять' : '';
+      return `<button class="srow press" data-sugg="${esc(p.id)}"${links.friends.includes(p.id) || links.outgoing.includes(p.id) ? ' disabled' : ''} style="--c:${/^#[0-9A-Fa-f]{6}$/.test(p.color) ? p.color : '#8E8E93'}">
+        <span class="dot"></span><span class="sn"><b>${esc(p.name)}</b><small>@${esc(p.id)}</small></span><span class="sst">${st || 'Постучаться'}</span></button>`;
+    }).join('') : `<div class="v" style="padding:10px 2px">Никого не нашли. Можно отправить ссылку-приглашение.</div>`;
+    box.hidden = false;
+  }, 250);
+});
 document.addEventListener('change', e => {
   const t = e.target;
   if (t.dataset && t.dataset.remt){ const r = JSON.parse(JSON.stringify(meInfo.rem)); r[t.dataset.remt].t = t.value; saveRem(r); return; }

@@ -286,6 +286,13 @@ input.in:focus{outline:2px solid var(--dim);outline-offset:0}
 .cl[aria-pressed="true"]{box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--c)}
 .tsel{border:0;background:var(--field);border-radius:12px;padding:8px 10px;font:inherit;font-size:14px;font-weight:600;color:var(--ink)}
 .tsel:disabled{opacity:.4}
+.sugg{display:flex;flex-direction:column;gap:2px;padding:4px 0 6px;border-bottom:.5px solid var(--line)}
+.srow{display:flex;align-items:center;gap:10px;border:0;background:transparent;padding:8px 4px;border-radius:12px;text-align:left;color:var(--ink)}
+.srow:not(:disabled):active{background:var(--field)}
+.srow:disabled{opacity:.55}
+.srow .dot{width:14px;height:14px;border-radius:50%;background:var(--c);flex:none}
+.srow .sn{flex:1;min-width:0;display:flex;flex-direction:column}.srow .sn small{color:var(--muted);font-size:12px}
+.srow .sst{font-size:13px;font-weight:600;color:#0A84FF}
 .nickin{display:flex;align-items:center;background:var(--field);border-radius:16px;padding-left:14px}
 .nickin span{color:var(--muted);font-weight:600;font-size:16px}
 .nickin .in{background:transparent;padding-left:3px}
@@ -471,6 +478,6 @@ body.feed.skin-oneui .hdr{flex-direction:row;align-items:flex-end;gap:10px}
   <div><div class="t1" id="toastT1"></div><div class="t2" id="toastT2"></div></div>
 </div>
 
-<script src="app.js?v=33"></script>
+<script src="app.js?v=34"></script>
 </body>
 </html>
