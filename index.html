@@ -218,7 +218,10 @@ body.s3 .day.filled:not(.today) .n,body.s3 .md.filled{color:#1C1C1E;text-shadow:
 .gcta{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:0;border-radius:16px;padding:12px;font-weight:600;font-size:15px;background:color-mix(in srgb,#FFC671 28%,var(--card));color:var(--ink)}
 .gcta svg{color:#B7791F}
 .itv{display:flex;justify-content:center;align-items:center;gap:6px;margin:26px 0 0;color:var(--muted);font-weight:600;letter-spacing:.04em;font-size:14px}
-.itv svg{width:20px;height:20px}
+.sig .vo{stroke:#0E0F12}
+:root[data-theme="dark"] .sig .vo{stroke:none}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .sig .vo{stroke:none}}
+.ver{text-align:center;margin:4px 0 0;color:var(--muted);font-size:12px}
 .sync{position:fixed;top:calc(8px + env(safe-area-inset-top,0px));right:12px;z-index:9;font-size:12px;font-weight:600;color:var(--muted);background:var(--card);border-radius:999px;padding:4px 10px}
 
 /* нижняя панель */
@@ -425,7 +428,7 @@ body.feed.skin-oneui .hdr{flex-direction:row;align-items:flex-end;gap:10px}
 .day.filled{overflow:visible}
 .day .bands{border-radius:inherit;overflow:visible}
 .day .bands i{border-radius:14px}
-.day .bands.br{left:calc(100% - 14px);right:auto;width:33px;border-radius:0;overflow:visible;z-index:1;opacity:.9}
+.day .bands.br{left:calc(100% - 14px);right:auto;width:33px;border-radius:0;overflow:visible;z-index:1;opacity:.885}
 .day .bands.br i{border-radius:0}
 .day.filled .n{z-index:2}
 .vnav{display:flex;align-items:center;justify-content:space-between;margin:-4px 0 6px}
@@ -492,6 +495,6 @@ body.feed.skin-oneui .hdr{flex-direction:row;align-items:flex-end;gap:10px}
   <div><div class="t1" id="toastT1"></div><div class="t2" id="toastT2"></div></div>
 </div>
 
-<script src="app.js?v=43"></script>
+<script src="app.js?v=47"></script>
 </body>
 </html>

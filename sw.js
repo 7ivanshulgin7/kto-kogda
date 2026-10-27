@@ -1,6 +1,6 @@
 // Кто когда — service worker. При изменении файлов меняйте VERSION.
-const VERSION = 'kk-43';
-const SHELL = ['./', 'index.html', 'app.js?v=43', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
+const VERSION = 'kk-47';
+const SHELL = ['./', 'index.html', 'app.js?v=47', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'badge-96.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -26,7 +26,7 @@ self.addEventListener('push', e => {
   e.waitUntil(self.registration.showNotification(d.title || 'Кто когда', {
     body: d.body || 'В календаре что-то изменилось',
     icon: 'icon-192.png',
-    badge: 'icon-192.png',
+    badge: 'badge-96.png',
     tag: 'kk',
     renotify: true
   }));
