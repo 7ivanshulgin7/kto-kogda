@@ -325,14 +325,30 @@ function monthRange(){
 const WD = '<div class="wd"><span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span></div>';
 function blockHTML(y, m, map, V){
   const offset = (new Date(y,m,1).getDay()+6)%7, dim = new Date(y,m+1,0).getDate();
+  const kOf = dd => key(new Date(y, m, dd));
+  // дорожки по неделям: у каждого, кто занят в эту неделю, своя постоянная строка
+  const slotsOf = {};
+  for (let dd = 1; dd <= dim; dd++){
+    const row = Math.floor((offset + dd - 1) / 7);
+    if (!slotsOf[row]){
+      const days = []; for (let x = dd; x <= dim && Math.floor((offset + x - 1) / 7) === row; x++) days.push(map[kOf(x)] || {});
+      slotsOf[row] = V.filter(p => days.some(b => b[p.id]));
+    }
+  }
   let h = '<span></span>'.repeat(offset);
   for (let dd=1; dd<=dim; dd++){
-    const d = new Date(y,m,dd), k = key(d), b = map[k] || {};
+    const k = kOf(dd), b = map[k] || {};
     const busy = V.filter(p => b[p.id]);
-    const dow = (offset + dd - 1) % 7;
+    const dow = (offset + dd - 1) % 7, row = Math.floor((offset + dd - 1) / 7);
+    const prev = dow > 0 && dd > 1 ? (map[kOf(dd - 1)] || {}) : {}, next = dow < 6 && dd < dim ? (map[kOf(dd + 1)] || {}) : {};
+    const strip = busy.length ? `<span class="bands">${busy.map(p => {
+      const e = b[p.id];
+      const cl = prev[p.id] === e ? ' cl' : '', cr = next[p.id] === e ? ' cr' : '';
+      return `<i class="${cl}${cr}" style="--c:${p.color}"></i>`;
+    }).join('')}</span>` : '';
     const cls = ['day press', k<TODAY_K && 'past', k===TODAY_K && 'today', k===state.sel && 'sel', busy.length && 'filled', busy.length > 1 && 'over', dow===6 && 'sun'].filter(Boolean).join(' ');
     const lbl = `${dd} ${MONTHS_G[m]}${busy.length ? ', заняты: '+joinNames(busy.map(p=>p.id)) : ''}`;
-    h += `<button class="${cls}" data-day="${k}" aria-label="${lbl}">${bands(busy)}<span class="n">${dd}</span></button>`;
+    h += `<button class="${cls}" data-day="${k}" aria-label="${lbl}">${strip}<span class="n">${dd}</span></button>`;
   }
   const cur = mIdx(y,m) === CUR();
   return `<section class="mblock${cur ? ' cur' : ''}" data-mi="${mIdx(y,m)}"><h3 class="mtitle">${MONTHS[m]}${y !== TODAY.getFullYear() ? ` <small>${y}</small>` : ''}</h3><div class="grid">${h}</div></section>`;
@@ -718,6 +734,13 @@ function closeSheet(){ if (sheetLocked) return; $('sheet').classList.remove('ope
 $('backdrop').addEventListener('click', closeSheet);
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
 // смахнуть шторку вниз
+{ const sh = $('sheet'); let hx = null, hy = 0;
+  sh.addEventListener('touchstart', e => { hx = e.touches[0].clientX; hy = e.touches[0].clientY; }, {passive:true});
+  sh.addEventListener('touchend', e => {
+    if (hx === null || !sh.querySelector('.vcard')) return;
+    const dx = e.changedTouches[0].clientX - hx, dy2 = e.changedTouches[0].clientY - hy; hx = null;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy2) * 1.5) stepView(dx < 0 ? 1 : -1);
+  }); }
 { const sh = $('sheet'); let y0 = null, dy = 0;
   sh.addEventListener('touchstart', e => { y0 = sh.scrollTop <= 0 && !sheetLocked ? e.touches[0].clientY : null; dy = 0; }, {passive:true});
   sh.addEventListener('touchmove', e => { if (y0 === null) return; dy = e.touches[0].clientY - y0; if (dy > 0){ sh.classList.add('drag'); sh.style.transform = `translateY(${dy}px)`; } }, {passive:true});
@@ -897,18 +920,36 @@ function demoReply(id, people){
 }
 
 // чужое дело — только просмотр и ответ
-function openView(e){
-  const me = ME(), by = owner(e), mine = e.who.includes(me), st = e.inv && e.inv[me];
+// подробности дела; свайп влево-вправо — соседние дела по времени
+let viewId = null;
+const viewList = () => entries.slice().sort((a, b) => a.from.localeCompare(b.from) || a.to.localeCompare(b.to) || a.what.localeCompare(b.what));
+function openView(e, dir){
+  viewId = e.id;
+  const me = ME(), by = owner(e), mine = e.who.includes(me), st = e.inv && e.inv[me], own = by === me;
   const people = [by, ...e.who.filter(p => p !== by), ...Object.keys(e.inv || {})].filter((p,i,a) => P[p] && a.indexOf(p) === i);
+  const list = viewList(), i = list.findIndex(x => x.id === e.id);
+  const days = Math.round((parse(e.to) - parse(e.from)) / 864e5) + 1;
   let btns = '';
-  if (st === 'wait') btns = `<button class="btn ok press" data-rsvp="${e.id}" data-ans="yes">Иду</button><button class="btn plain press" data-rsvp="${e.id}" data-ans="no">Не иду</button>`;
+  if (own) btns = `<button class="btn press" data-act="editView">Изменить</button>`;
+  else if (st === 'wait') btns = `<button class="btn ok press" data-rsvp="${e.id}" data-ans="yes">Иду</button><button class="btn plain press" data-rsvp="${e.id}" data-ans="no">Не иду</button>`;
   else if (st === 'no') btns = `<button class="btn ok press" data-rsvp="${e.id}" data-ans="yes">Передумал${P[me].f ? 'а' : ''} — иду</button>`;
   else if (mine) btns = `<button class="btn ghost press" data-rsvp="${e.id}" data-ans="no">Не пойду</button>`;
   else if (st === 'ask') btns = `<div class="hint" style="margin-top:14px">Ты попросил${P[me].f ? 'ась' : 'ся'} — ждём, что ответит ${esc(P[by].name)}.</div>`;
   else if (srvNew() && links.friends.includes(by)) btns = `<button class="btn ok press" data-act="ask" data-id="${e.id}">Хочу с вами</button><div class="hint" style="margin-top:8px">${esc(P[by].name)} получит просьбу и решит.</div>`;
-  openSheet(`<h2>${esc(e.what)}</h2><div class="hint">${fmtRange(e.from,e.to)}</div>
+  const visTxt = !own ? '' : Array.isArray(e.vis) ? `${LOCK} видят: ${e.vis.length ? joinNames(e.vis) : 'только вы'}` : 'видят все ваши люди';
+  openSheet(`<div class="vnav"><button class="lnk press" data-act="vPrev"${i > 0 ? '' : ' disabled'} aria-label="Предыдущее дело">‹</button>
+      <span>${i + 1} из ${list.length}</span><button class="lnk press" data-act="vNext"${i < list.length - 1 ? '' : ' disabled'} aria-label="Следующее дело">›</button></div>
+    <div class="vcard${dir ? ' from-' + dir : ''}">
+    <h2>${esc(e.what)}</h2>
+    <div class="vmeta"><span>${WDF[parse(e.from).getDay()].toLowerCase()}, ${fmtRange(e.from, e.to)}${days > 1 ? ` · ${days} ${plural(days,'день','дня','дней')}` : ''}</span>
+      ${e.tf ? `<span>время: ${e.tf}${e.tt ? '–' + e.tt : ''}</span>` : ''}${visTxt ? `<span>${visTxt}</span>` : ''}</div>
     <div class="plist">${people.map(p => `<div class="prow" style="--c:${P[p].color}"><span class="dot"></span>${esc(P[p].name)}<span class="st">${statusOf(e,p)}</span></div>`).join('')}</div>
-    ${btns || `<div class="hint" style="margin-top:14px">Изменить может только ${esc(P[by].name)}.</div>`}`);
+    ${btns || `<div class="hint" style="margin-top:14px">Изменить может только ${esc(P[by].name)}.</div>`}
+    <div class="hint" style="margin-top:10px;text-align:center">Листай влево-вправо — соседние дела</div></div>`);
+}
+function stepView(n){
+  const list = viewList(), i = list.findIndex(x => x.id === viewId), e = list[i + n];
+  if (e) openView(e, n > 0 ? 'r' : 'l');
 }
 function rsvp(id, ans){
   const e = entries.find(x => x.id === id); if (!e) return;
@@ -1145,7 +1186,7 @@ document.addEventListener('click', ev => {
     toast(d.ans === 'yes' ? 'Взяли' : 'Отказали', `${P[d.who] ? P[d.who].name : ''}${e ? ' · ' + e.what : ''}`); return; }
   if (d.day){ if (Date.now() - lpAt < 600) return; if (picking){ togglePick(d.day); return; } openDay(d.day); return; }
   if (d.date){ const dt = parse(d.date); openMonth(mIdx(dt.getFullYear(), dt.getMonth()), d.date); return; }
-  if (d.open){ const e = entries.find(x => x.id === d.open); if (!e) return; owner(e) === ME() ? openForm(e) : openView(e); return; }
+  if (d.open){ const e = entries.find(x => x.id === d.open); if (!e) return; openView(e); return; }
   if (d.view && picking) stopPick();
   if (d.view){
     if (isMulti(d.view)){ state.sy = TODAY.getFullYear(); state.sm = TODAY.getMonth(); }
@@ -1163,6 +1204,9 @@ document.addEventListener('click', ev => {
     }
     case 'more': state.extra++; renderMonth(); markPicked(); break;
     case 'pickCancel': stopPick(); break;
+    case 'vPrev': stepView(-1); break;
+    case 'vNext': stepView(1); break;
+    case 'editView': { const e = entries.find(x => x.id === viewId); if (e) openForm(e); break; }
     case 'ask': { const e = entries.find(x => x.id === d.id); if (!e) break; commit({op:'ask', id:d.id}); closeSheet(); render();
       toast('Просьба отправлена', `${P[owner(e)].name} решит: ${e.what}`); break; }
     case 'noRem': form.noRem = !form.noRem; t.setAttribute('aria-pressed', !form.noRem); t.textContent = form.noRem ? 'Не напоминать' : 'Напомнить мне'; break;

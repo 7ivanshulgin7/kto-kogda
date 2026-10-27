@@ -421,6 +421,19 @@ body.feed.skin-oneui .hdr{flex-direction:row;align-items:flex-end;gap:10px}
 .day.filled.sun:not(.today) .n{color:var(--red)}
 .md.filled.over:not(.today) .num,body.s3 .md.filled.over:not(.today) .num{background:none;color:var(--ink);font-weight:700;text-shadow:0 0 1px var(--cell),0 0 2px var(--cell),1px 0 0 var(--cell),-1px 0 0 var(--cell),0 1px 0 var(--cell),0 -1px 0 var(--cell)}
 .md.filled.sun:not(.today) .num{color:var(--red)}
+/* дело на несколько дней — сплошная полоса через дни недели */
+.day.filled{overflow:visible}
+.day .bands i.e{background:transparent;box-shadow:none}
+.day .bands i.cl{margin-left:-5px;border-top-left-radius:0;border-bottom-left-radius:0}
+.day .bands i.cr{margin-right:-5px;border-top-right-radius:0;border-bottom-right-radius:0}
+.day.filled .n{z-index:2}
+.vnav{display:flex;align-items:center;justify-content:space-between;margin:-4px 0 6px}
+.vnav span{color:var(--muted);font-size:13px;font-weight:600}
+.vnav .lnk{width:40px;height:34px;padding:0;font-size:20px;line-height:1}.vnav .lnk:disabled{opacity:.3}
+.vmeta{display:flex;flex-direction:column;gap:3px;color:var(--muted);font-size:14px;margin:2px 0 4px}
+.vmeta .lock{vertical-align:-1px}
+.vcard.from-r{animation:vin-r .22s ease-out}.vcard.from-l{animation:vin-l .22s ease-out}
+@keyframes vin-r{from{transform:translateX(30px);opacity:0}}@keyframes vin-l{from{transform:translateX(-30px);opacity:0}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
 </style>
 </head>
@@ -478,6 +491,6 @@ body.feed.skin-oneui .hdr{flex-direction:row;align-items:flex-end;gap:10px}
   <div><div class="t1" id="toastT1"></div><div class="t2" id="toastT2"></div></div>
 </div>
 
-<script src="app.js?v=34"></script>
+<script src="app.js?v=35"></script>
 </body>
 </html>
