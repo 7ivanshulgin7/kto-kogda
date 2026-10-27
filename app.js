@@ -343,13 +343,12 @@ function blockHTML(y, m, map, V){
     const prev = dow > 0 && dd > 1 ? (map[kOf(dd - 1)] || {}) : {}, next = dow < 6 && dd < dim ? (map[kOf(dd + 1)] || {}) : {};
     // склеиваем с соседним днём, только если полоса там на той же высоте — без ступенек и острых углов
     const bp = V.filter(p => prev[p.id]), bn = V.filter(p => next[p.id]);
-    const n = busy.length;   // склеенные дни — сплошная линия, промежуток светлее
-    const strip = n ? `<span class="bands bx">${busy.map((p, i) => {
-      const e = b[p.id];
-      const cl = prev[p.id] === e && bp.length === n && bp[i] === p, cr = next[p.id] === e && bn.length === n && bn[i] === p;
-      return `<i class="${cl ? 'cl ' : ''}${cr ? 'cr' : ''}" style="--c:${p.color};top:calc((100% + 2.5px) * ${i} / ${n});height:calc((100% + 2.5px) / ${n} - 2.5px)"></i>`;
-    }).join('')}</span>` : '';
-    const cls = ['day press', k<TODAY_K && 'past', k===TODAY_K && 'today', k===state.sel && 'sel', busy.length && 'filled', busy.length > 1 && 'over', dow===6 && 'sun'].filter(Boolean).join(' ');
+    // заливка дня = сама клетка; склеенные дни соединены перемычкой
+    const n = busy.length, jl = n && bp.length === n && busy.every((p, i) => bp[i] === p && prev[p.id] === b[p.id]),
+      jr = n && bn.length === n && busy.every((p, i) => bn[i] === p && next[p.id] === b[p.id]);
+    const ii = busy.map(p => `<i style="--c:${p.color}"></i>`).join('');
+    const strip = n ? `<span class="bands">${ii}</span>${jr ? `<span class="bands br">${ii}</span>` : ''}` : '';   // br — перемычка к следующему дню
+    const cls = ['day press', k<TODAY_K && 'past', k===TODAY_K && 'today', k===state.sel && 'sel', busy.length && 'filled', busy.length > 1 && 'over', jr && 'jr', dow===6 && 'sun'].filter(Boolean).join(' ');
     const lbl = `${dd} ${MONTHS_G[m]}${busy.length ? ', заняты: '+joinNames(busy.map(p=>p.id)) : ''}`;
     h += `<button class="${cls}" data-day="${k}" aria-label="${lbl}">${strip}<span class="n">${dd}</span></button>`;
   }
