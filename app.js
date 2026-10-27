@@ -341,9 +341,12 @@ function blockHTML(y, m, map, V){
     const busy = V.filter(p => b[p.id]);
     const dow = (offset + dd - 1) % 7, row = Math.floor((offset + dd - 1) / 7);
     const prev = dow > 0 && dd > 1 ? (map[kOf(dd - 1)] || {}) : {}, next = dow < 6 && dd < dim ? (map[kOf(dd + 1)] || {}) : {};
-    const strip = busy.length ? `<span class="bands">${busy.map(p => {
+    // склеиваем с соседним днём, только если полоса там на той же высоте — без ступенек и острых углов
+    const bp = V.filter(p => prev[p.id]), bn = V.filter(p => next[p.id]);
+    const strip = busy.length ? `<span class="bands">${busy.map((p, i) => {
       const e = b[p.id];
-      const cl = prev[p.id] === e ? ' cl' : '', cr = next[p.id] === e ? ' cr' : '';
+      const cl = prev[p.id] === e && bp.length === busy.length && bp[i] === p ? ' cl' : '';
+      const cr = next[p.id] === e && bn.length === busy.length && bn[i] === p ? ' cr' : '';
       return `<i class="${cl}${cr}" style="--c:${p.color}"></i>`;
     }).join('')}</span>` : '';
     const cls = ['day press', k<TODAY_K && 'past', k===TODAY_K && 'today', k===state.sel && 'sel', busy.length && 'filled', busy.length > 1 && 'over', dow===6 && 'sun'].filter(Boolean).join(' ');
