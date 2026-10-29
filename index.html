@@ -429,7 +429,12 @@ body.feed.skin-oneui .hdr{flex-direction:row;align-items:flex-end;gap:10px}
 .day .bands{border-radius:inherit;overflow:visible}
 .day .bands i{border-radius:14px}
 .day .bands.br{left:calc(100% - 14px);right:auto;width:33px;border-radius:0;overflow:visible;z-index:1;opacity:.885}
-.day .bands.br i{border-radius:0}
+.day .bands .g{display:flex;flex-direction:column;border-radius:14px;overflow:hidden;min-height:0}
+.day .bands .g i{flex:1;border-radius:0}
+.day .bands.br{display:block}
+.day .bands.br i{position:absolute;left:0;right:0;border-radius:0}
+/* штриховка, когда цвет совпал с чужим */
+:root body .bands i[style*="--hp"],:root body .caps i[style*="--hp"],:root body [style*="--hp"] > .dot{background-image:var(--hp)}
 .day.filled .n{z-index:2}
 .vnav{display:flex;align-items:center;justify-content:space-between;margin:-4px 0 6px}
 .vnav span{color:var(--muted);font-size:13px;font-weight:600}
@@ -495,6 +500,6 @@ body.feed.skin-oneui .hdr{flex-direction:row;align-items:flex-end;gap:10px}
   <div><div class="t1" id="toastT1"></div><div class="t2" id="toastT2"></div></div>
 </div>
 
-<script src="app.js?v=47"></script>
+<script src="app.js?v=48"></script>
 </body>
 </html>
