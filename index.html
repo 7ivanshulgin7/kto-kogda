@@ -438,7 +438,9 @@ body.feed.skin-oneui .hdr{flex-direction:row;align-items:flex-end;gap:10px}
 .day .bands .g i{flex:1;border-radius:0}
 .day .bands.br{display:block}
 .day .bands.br i{position:absolute;left:0;right:0;border-radius:0}
-.day .bands.br i.fl{right:auto}
+.day .bands.fls{display:block;left:calc(100% - 14px);right:auto;width:33px;z-index:-1;overflow:visible;border-radius:0}
+.day .bands.fls i{position:absolute;border-radius:0;opacity:.885}
+.day.filled{background:transparent}
 /* штриховка, когда цвет совпал с чужим */
 :root body .bands i[style*="--hp"],:root body .caps i[style*="--hp"],:root body [style*="--hp"] > .dot,:root body .cl.pat{background-image:var(--hp,none);background-size:var(--hs,auto)}
 .cl.pat{background-color:var(--c)}
@@ -507,6 +509,6 @@ body.feed.skin-oneui .hdr{flex-direction:row;align-items:flex-end;gap:10px}
   <div><div class="t1" id="toastT1"></div><div class="t2" id="toastT2"></div></div>
 </div>
 
-<script src="app.js?v=55"></script>
+<script src="app.js?v=56"></script>
 </body>
 </html>
