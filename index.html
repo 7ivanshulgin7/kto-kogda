@@ -122,11 +122,13 @@ body.s3 .day.filled:not(.today) .n,body.s3 .md.filled{color:#1C1C1E;text-shadow:
 .day.filled .n{color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.55)}
 .day.today .n{background:var(--red);color:#fff;text-shadow:none}
 .day.out{opacity:.28}
-/* прошедшие дни бледнее: вуаль сверху, а не opacity — иначе перемычки накладываются друг на друга и видны полосы */
-.day.past:not(.out)::after{content:"";position:absolute;inset:0;border-radius:inherit;background:var(--bg);opacity:.5;z-index:1;pointer-events:none}
-.day.past.jr:not(.out)::after{right:-5px}
+/* прошедшие дни: пустые — полупрозрачные, занятые — разбавленный цвет (в app.js) */
+.day.past:not(.out):not(.filled){opacity:.5}
 .day.past:not(.out) .n{opacity:.55}
-.day.sel{outline:2px solid var(--ink);outline-offset:2px}
+/* рамка выбранного дня: слева поверх бледной перемычки вчерашнего дня, справа — под своей перемычкой к завтра */
+.day.sel{z-index:2;overflow:visible}
+.day.sel.filled{background:transparent}   /* бледная полоса вчера доходит до рамки, яркая начинается со скругления дня */
+.day.sel:not(.picked)::before{content:"";position:absolute;inset:-4px;border:2px solid var(--ink);border-radius:18px;z-index:0;pointer-events:none}
 .day.free:not(.out)::after{content:"";position:absolute;bottom:9px;left:50%;width:6px;height:6px;margin-left:-3px;border-radius:50%;background:var(--green);box-shadow:0 0 8px color-mix(in srgb,var(--green) 60%,transparent)}
 .legend{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;padding:14px 4px 0}
 .legend i{width:7px;height:7px;border-radius:50%;background:var(--green)}
@@ -363,7 +365,7 @@ body.skin-oneui .strip{margin:0 -12px}
 body.skin-oneui .day{border-radius:12px}
 body.skin-oneui .day.today .n,body.skin-oneui .md.today .num{background:var(--acc)}
 body.skin-oneui .mm.cur .mmh span{color:var(--accInk)}
-body.skin-oneui .day.sel{outline-color:var(--acc)}
+body.skin-oneui .day.sel::before{border-color:var(--acc)}
 body.skin-oneui .dp{margin:16px -12px 0;padding:16px 12px 0;border-top:1px solid var(--line)}
 body.skin-oneui .ev,body.skin-oneui .emptyDay{background:var(--cell)}
 body.skin-oneui #vList .ev{background:var(--card)}
@@ -505,6 +507,6 @@ body.feed.skin-oneui .hdr{flex-direction:row;align-items:flex-end;gap:10px}
   <div><div class="t1" id="toastT1"></div><div class="t2" id="toastT2"></div></div>
 </div>
 
-<script src="app.js?v=51"></script>
+<script src="app.js?v=55"></script>
 </body>
 </html>
