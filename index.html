@@ -258,6 +258,8 @@ label.f{display:block;font-size:13px;font-weight:600;color:var(--muted);margin:1
 .wheel{position:relative;display:grid;grid-template-columns:1.6fr 1fr;height:190px;margin-top:12px;border-radius:18px;background:var(--field);overflow:hidden;
   -webkit-mask-image:linear-gradient(transparent,#000 28%,#000 72%,transparent);mask-image:linear-gradient(transparent,#000 28%,#000 72%,transparent)}
 .wcol{overflow-y:auto;scroll-snap-type:y mandatory;padding-block:76px;scrollbar-width:none;overscroll-behavior:contain;position:relative;z-index:1}
+.wheel{touch-action:pan-y;overscroll-behavior:contain}
+body.sheet-open{overflow:hidden}
 .wcol::-webkit-scrollbar{display:none}
 .wi{height:38px;display:grid;place-items:center;scroll-snap-align:center;font-size:19px;font-weight:600;font-variant-numeric:tabular-nums}
 .wheel.time{grid-template-columns:1fr 1fr}
@@ -509,6 +511,6 @@ body.feed.skin-oneui .hdr{flex-direction:row;align-items:flex-end;gap:10px}
   <div><div class="t1" id="toastT1"></div><div class="t2" id="toastT2"></div></div>
 </div>
 
-<script src="app.js?v=56"></script>
+<script src="app.js?v=57"></script>
 </body>
 </html>
