@@ -2,7 +2,7 @@
 // подпись автора: знак T/V-бык (V из Монеток, T с рогами)
 const SIG = '<svg class="sig" viewBox="0 -16 229 98" role="img" aria-label="itivan" style="height:29px;width:auto;display:block;overflow:visible;color:var(--ink)"><svg x="2" y="5" width="80" height="74" viewBox="40 0 220 160"><polyline class="vo" points="64,-20 150,172 236,-20" fill="none" stroke-width="42"/><polyline points="64,-20 150,172 236,-20" fill="none" stroke="#FF2E93" stroke-width="30"/></svg><svg x="2" y="5" width="80" height="74" viewBox="40 0 220 160" style="overflow:visible"><g style="fill:var(--bg);stroke:var(--bg)" stroke-width="20" stroke-linejoin="round"><path d="M150 0 L100 0 Q66 0 48 -44 Q48 30 100 30 L150 30 Z"/><path d="M150 0 L200 0 Q234 0 252 -44 Q252 30 200 30 L150 30 Z"/><path d="M135 0 H165 V160 H135 Z"/></g><g fill="currentColor"><path d="M150 0 L100 0 Q66 0 48 -44 Q48 30 100 30 L150 30 Z"/><path d="M150 0 L200 0 Q234 0 252 -44 Q252 30 200 30 L150 30 Z"/><path d="M135 0 H165 V160 H135 Z"/></g></svg><path fill="currentColor" d="M102.6 55.6V50.5H109.8V39.9H103.6V34.7H115.2V50.5H121.2V55.6ZM112.1 31.4Q110.6 31.4 109.6 30.6Q108.7 29.8 108.7 28.5Q108.7 27.1 109.6 26.3Q110.6 25.5 112.1 25.5Q113.7 25.5 114.6 26.3Q115.5 27.1 115.5 28.5Q115.5 29.8 114.6 30.6Q113.7 31.4 112.1 31.4Z M134.9 55.6Q131.7 55.6 129.9 53.8Q128.1 52.0 128.1 48.8V39.9H122.6V34.7H128.1V28.8H133.8V34.7H141.6V39.9H133.8V48.8Q133.8 50.5 135.5 50.5H141.2V55.6Z M145.2 55.6V50.5H152.4V39.9H146.1V34.7H157.7V50.5H163.8V55.6ZM154.7 31.4Q153.1 31.4 152.2 30.6Q151.2 29.8 151.2 28.5Q151.2 27.1 152.2 26.3Q153.1 25.5 154.7 25.5Q156.2 25.5 157.2 26.3Q158.1 27.1 158.1 28.5Q158.1 29.8 157.2 30.6Q156.2 31.4 154.7 31.4Z M171.7 55.6 164.8 34.7H170.7L174.2 46.5Q174.5 47.5 174.8 48.8Q175.1 50.0 175.3 50.8Q175.5 50.0 175.7 48.8Q176.0 47.5 176.3 46.5L179.8 34.7H185.6L178.8 55.6Z M193.8 56.0Q190.6 56.0 188.8 54.3Q186.9 52.6 186.9 49.7Q186.9 46.5 189.1 44.8Q191.3 43.1 195.4 43.1H199.7V41.6Q199.7 40.4 198.9 39.6Q198.0 38.9 196.6 38.9Q195.3 38.9 194.4 39.5Q193.5 40.1 193.3 41.2H187.8Q188.1 38.0 190.6 36.2Q193.0 34.3 196.8 34.3Q200.8 34.3 203.1 36.3Q205.4 38.3 205.4 41.6V55.6H199.9V52.2H199.8Q199.5 53.7 198.3 54.6Q196.6 56.0 193.8 56.0ZM195.9 51.8Q197.6 51.8 198.7 50.9Q199.7 50.0 199.7 48.6V46.4H195.5Q194.2 46.4 193.4 47.1Q192.6 47.8 192.6 49.1Q192.6 50.3 193.5 51.1Q194.4 51.8 195.9 51.8Z M208.9 55.6V34.7H214.4V38.7H214.5Q214.8 37.0 215.9 35.9Q217.4 34.3 220.0 34.3Q223.0 34.3 224.9 36.5Q226.7 38.6 226.7 42.1V55.6H221.0V42.7Q221.0 41.1 220.2 40.2Q219.3 39.3 217.8 39.3Q216.2 39.3 215.4 40.2Q214.6 41.1 214.6 42.7V55.6Z"/></svg>';
 // версия под подписью — менять вместе с VERSION в sw.js
-const APP_VER = '57 от 01.11.2026';
+const APP_VER = '59 от 03.11.2026';
 const CONFIG = {
   // Адрес API Gateway из Яндекс Cloud, напр. 'https://d5dxxxxxxxx.apigw.yandexcloud.net'
   // Пусто — демо-режим: данные хранятся только на этом устройстве, вы — DEMO_ME.
@@ -106,7 +106,10 @@ function mergePut(prev, req, by){
   }
   for (const [p, st] of Object.entries((prev && prev.inv) || {})) if (st === 'ask' && !(p in inv) && !who.includes(p)) inv[p] = 'ask';
   const vis = Array.isArray(req.vis) ? req.vis.filter(p => p !== by) : 'all';
-  return {id:req.id, by, what:req.what, from:req.from, to:req.to, who, inv, vis, tf:req.tf || '', tt:req.tt || '', noRem:!!req.noRem, ts:Date.now()};
+  const out = {id:req.id, by, what:req.what, from:req.from, to:req.to, who, inv, vis, tf:req.tf || '', tt:req.tt || '', noRem:!!req.noRem, ts:Date.now()};
+  const rq = req.req;
+  if (rq && rq.to && rq.to !== by && P[rq.to] && rq.text) out.req = {to:rq.to, text:rq.text, st: prev && prev.req && prev.req.to === rq.to && prev.req.text === rq.text ? prev.req.st : 'wait'};
+  return out;
 }
 function applyOp(list, op){
   const i = list.findIndex(e => e.id === (op.entry ? op.entry.id : op.id));
@@ -128,6 +131,9 @@ function applyOp(list, op){
   } else if (op.op === 'ask'){
     if (!prev || owner(prev) === op.by || prev.who.includes(op.by)) return list;
     out[i] = {...prev, inv:{...(prev.inv || {}), [op.by]:'ask'}, ts:Date.now()};
+  } else if (op.op === 'req'){
+    if (!prev || !prev.req || prev.req.to !== op.by) return list;
+    out[i] = {...prev, req:{...prev.req, st: op.ans === 'yes' ? 'yes' : 'no'}, ts:Date.now()};
   } else if (op.op === 'answer'){
     if (!prev || owner(prev) !== op.by || (prev.inv || {})[op.who] !== 'ask') return list;
     const inv = {...prev.inv}; delete inv[op.who];
@@ -226,6 +232,7 @@ async function sync(){
         else if (op.op === 'del') await api('DELETE', '/entries/' + op.id);
         else if (op.op === 'ask') await api('POST', `/entries/${op.id}/ask`);
         else if (op.op === 'answer') await api('POST', `/entries/${op.id}/answer`, {who:op.who, ans:op.ans});
+        else if (op.op === 'req') await api('POST', `/entries/${op.id}/req`, {ans:op.ans});
         else await api('POST', `/entries/${op.id}/rsvp`, {ans:op.ans});
       } catch(e){ if (!(e.status >= 400 && e.status < 500)) throw e; } // отклонённую сервером операцию просто выбрасываем
       pending.shift(); store(KEYS.pending, pending);
@@ -305,12 +312,23 @@ applyTheme();
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
 
 const vis = () => PEOPLE.filter(p => !state.hidden.has(p.id));
+// «попросить»: согласившийся помочь занят на время дела своим делом (текст просьбы)
+const HELP = new WeakMap();
+function helperOf(e){
+  if (!e.req || e.req.st !== 'yes' || !P[e.req.to]) return null;
+  if (!HELP.has(e)) HELP.set(e, {id:e.id + '~h', by:e.req.to, who:[e.req.to], what:e.req.text, from:e.from, to:e.to, tf:e.tf, tt:e.tt, src:e});
+  return HELP.get(e);
+}
+const srvReq = () => !ONLINE || !!(meInfo && meInfo.req);
+const reqSt = e => e.req.st === 'yes' ? verb(e.req.to, 'согласился') : e.req.st === 'no' ? 'не может' : 'ждём ответа';
 function busyMap(){
   const map = {};
   for (const e of entries){
+    const h = helperOf(e);   // согласился помочь — тоже занят, отдельной полосой
     for (let d = parse(e.from); key(d) <= e.to; d = addDays(d,1)){
       const k = key(d); map[k] = map[k] || {};
       for (const w of e.who) if (!map[k][w]) map[k][w] = e;
+      if (h && !map[k][h.by]) map[k][h.by] = h;
     }
   }
   return map;
@@ -340,7 +358,10 @@ function renderInvites(){
   const asks = entries.filter(e => owner(e) === me && e.to >= TODAY_K).flatMap(e => Object.keys(e.inv || {}).filter(p => e.inv[p] === 'ask' && P[p]).map(p => `<div class="inv" style="${cs(P[p])}">
     <div style="min-width:0"><div class="who">${esc(P[p].name)} просится</div><div class="what">${esc(e.what)}</div><div class="meta">${fmtRange(e.from,e.to)}</div></div>
     <div class="invB"><button class="yes press" data-answ="${e.id}" data-who="${p}" data-ans="yes">Взять</button><button class="no press" data-answ="${e.id}" data-who="${p}" data-ans="no">Нет</button></div></div>`)).join('');
-  const knocks = asks + links.incoming.filter(id => P[id]).map(id => `<div class="inv" style="${cs(P[id])}">
+  const reqs = entries.filter(e => e.req && e.req.to === me && e.req.st === 'wait' && e.to >= TODAY_K && P[owner(e)]).map(e => `<div class="inv" style="${cs(P[owner(e)])}">
+    <div style="min-width:0"><div class="who">${esc(P[owner(e)].name)} просит</div><div class="what">${esc(e.req.text)}</div><div class="meta">${fmtRange(e.from,e.to)}${e.tf ? `, ${e.tf}${e.tt ? '–' + e.tt : ''}` : ''} · ${esc(e.what)}</div></div>
+    <div class="invB"><button class="yes press" data-rqa="${e.id}" data-ans="yes">Помогу</button><button class="no press" data-rqa="${e.id}" data-ans="no">Не могу</button></div></div>`).join('');
+  const knocks = reqs + asks + links.incoming.filter(id => P[id]).map(id => `<div class="inv" style="${cs(P[id])}">
     <div style="min-width:0"><div class="who">Стучится к вам</div><div class="what">${esc(P[id].name)}</div><div class="meta">@${id}</div></div>
     <div class="invB"><button class="yes press" data-link="${id}" data-la="accept">Принять</button><button class="no press" data-link="${id}" data-la="drop">Нет</button></div></div>`).join('');
   const np = users.filter(u => u.status === 'pending').length;
@@ -485,11 +506,13 @@ function markSel(){
 const LOCK = '<svg class="lock" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-label="Видно не всем"><rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
 function evHTML(e){
   const w = waiting(e);
-  const caps = e.who.map(p => `<i style="${cs(P[p])}"></i>`).join('') + w.map(p => `<i class="wait" style="${cs(P[p])}"></i>`).join('');
+  const caps = e.who.map(p => `<i style="${cs(P[p])}"></i>`).join('') + w.map(p => `<i class="wait" style="${cs(P[p])}"></i>`).join('')
+    + (e.req && P[e.req.to] && e.req.st !== 'no' ? `<i class="${e.req.st === 'yes' ? '' : 'wait'}" style="${cs(P[e.req.to])}"></i>` : '');
+  const rq = e.req && P[e.req.to] ? `<div class="meta">Просьба · ${esc(P[e.req.to].name)}: ${esc(e.req.text)} — ${reqSt(e)}</div>` : '';
   const mine = owner(e) === ME();
   return `<button class="ev press" data-open="${e.id}">
     <span class="caps">${caps}</span>
-    <span style="min-width:0"><div class="what">${e.vis && e.vis !== 'all' ? LOCK : ''}${esc(e.what)}</div><div class="meta">${joinNames(e.who)}${w.length ? ` · ждём: ${joinNames(w)}` : ''}, ${fmtRange(e.from,e.to)}${e.tf ? `, ${e.tf}${e.tt ? '–' + e.tt : ''}` : ''}${Array.isArray(e.vis) ? ` · видят: ${e.vis.length ? joinNames(e.vis) : 'только вы'}` : ''}</div></span>
+    <span style="min-width:0"><div class="what">${e.vis && e.vis !== 'all' ? LOCK : ''}${esc(e.what)}</div><div class="meta">${joinNames(e.who)}${w.length ? ` · ждём: ${joinNames(w)}` : ''}, ${fmtRange(e.from,e.to)}${e.tf ? `, ${e.tf}${e.tt ? '–' + e.tt : ''}` : ''}${Array.isArray(e.vis) ? ` · видят: ${e.vis.length ? joinNames(e.vis) : 'только вы'}` : ''}</div>${rq}</span>
     ${mine ? `<svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>` : ''}</button>`;
 }
 // дела дня — в шторке
@@ -497,7 +520,7 @@ function openDay(k){
   state.sel = k; markSel();
   const d = parse(k);
   const list = entries.filter(e => e.from <= k && e.to >= k).sort((a,b) => a.from.localeCompare(b.from));
-  const busy = new Set(list.flatMap(e => e.who));
+  const busy = new Set(list.flatMap(e => e.req && e.req.st === 'yes' ? [...e.who, e.req.to] : e.who));
   const free = PEOPLE.filter(p => !busy.has(p.id));
   let h = `<div class="dpHead"><h2>${WDF[d.getDay()]}, ${fmtDay(k)}</h2>${busy.size ? '' : '<span class="tag">Все свободны</span>'}</div>`;
   if (list.length){
@@ -698,6 +721,7 @@ function lookHTML(){
 function notifHTML(){
   const pushNote = pushOn ? 'Приглашения, запросы и напоминания' : (isIOS && !standalone) ? 'На iPhone сначала: Поделиться → «На экран Домой»' : 'Включи, чтобы видеть, кто что добавил';
   return `<div class="set"><div class="setRow"><div><div class="k">Пуш-уведомления</div><div class="v">${pushNote}</div></div><button class="lnk press${pushOn ? ' on' : ''}" data-act="push">${pushOn ? 'Включены' : 'Включить'}</button></div>
+    ${pushOn ? `<div class="setRow"><div><div class="k">Проверить</div><div class="v">Пришлём пробный пуш на этот телефон</div></div><button class="lnk press" data-act="pushTest">Проверить</button></div>` : ''}
     <div class="setRow"><div><div class="k">О делах всех людей</div><div class="v">${meInfo.pushAll ? 'Пуш о каждом новом деле' : 'Только приглашения и запросы'}</div></div><button class="lnk press${meInfo.pushAll ? ' on' : ''}" data-act="pushAll">${meInfo.pushAll ? 'Да' : 'Нет'}</button></div></div>`;
 }
 function meHTML(){
@@ -832,8 +856,8 @@ function toRuns(days){
 function openForm(e, date, runs){
   const isEdit = !!e, me = ME(); wheelFor = null;
   form = isEdit ? {id:e.id, people:new Set([...e.who, ...Object.keys(e.inv || {})].filter(p => p !== me)), from:e.from, to:e.to, what:e.what, src:e,
-                   visAll: !Array.isArray(e.vis), vis: new Set(Array.isArray(e.vis) ? e.vis : []), tf: e.tf || '', tt: e.tt || '', noRem: !!e.noRem}
-                : {id:null, people:new Set(), from:date||TODAY_K, to:date||TODAY_K, what:'', src:null, visAll:true, vis:new Set(), tf:'', tt:''};
+                   visAll: !Array.isArray(e.vis), vis: new Set(Array.isArray(e.vis) ? e.vis : []), tf: e.tf || '', tt: e.tt || '', noRem: !!e.noRem, rqTo: e.req ? e.req.to : '', rqText: e.req ? e.req.text : ''}
+                : {id:null, people:new Set(), from:date||TODAY_K, to:date||TODAY_K, what:'', src:null, visAll:true, vis:new Set(), tf:'', tt:'', rqTo:'', rqText:''};
   if (runs && runs.length){ form.from = runs[0][0]; form.to = runs[0][1]; form.runs = runs.length > 1 ? runs : null; }
   openSheet(`<h2>${isEdit ? 'Изменить дело' : 'Новое дело'}</h2>
     <div class="hint">Занят будешь ты. Остальных можно позвать — они подтвердят сами.</div>
@@ -850,6 +874,7 @@ function openForm(e, date, runs){
     <button type="button" class="lnk press${form.noRem ? '' : ' on'}" data-act="noRem" aria-pressed="${!form.noRem}">${form.noRem ? 'Не напоминать' : 'Напомнить мне'}</button>` : ''}
     <label class="f">Позвать</label>
     <div class="whoPick" id="pick">${pickHTML()}</div>
+    ${srvReq() ? `<label class="f">Попросить</label><div class="whoPick" id="rqPick">${rqHTML()}</div>` : ''}
     <label class="f">Кто видит</label>
     ${seg('fvis', form.visAll ? 'all' : 'some', [['all','Все мои люди'],['some','Только выбранные']])}
     <div class="whoPick" id="visPick" style="margin-top:10px">${visHTML()}</div>
@@ -944,6 +969,15 @@ function visHTML(){
     return `<button type="button" class="chip press" style="${cs(p)}" data-vis="${p.id}" aria-pressed="${on}"${forced ? ' disabled' : ''}><span class="dot"></span>${esc(p.name)}${forced ? ' <small>позван</small>' : ''}</button>`; }).join('')
     + '<div class="hint" style="margin:6px 0 0;width:100%">Остальные не увидят это дело совсем. Позванные видят всегда.</div>';
 }
+// «попросить» одного человека: например, посидеть с сыном, пока ты на маникюре
+function rqHTML(){
+  const me = ME(), fr = PEOPLE.filter(p => p.id !== me && links.friends.includes(p.id));
+  if (!fr.length) return '<div class="hint" style="margin:0">Попросить можно тех, с кем есть связь.</div>';
+  const st = form.src && form.src.req && form.src.req.to === form.rqTo ? reqSt(form.src) : '';
+  return fr.map(p => `<button type="button" class="chip press" style="${cs(p)}" data-rqp="${p.id}" aria-pressed="${form.rqTo === p.id}"><span class="dot"></span>${esc(p.name)}${form.rqTo === p.id && st ? ` <small>${st}</small>` : ''}</button>`).join('')
+    + (form.rqTo ? `<input class="in" id="fRq" maxlength="60" style="margin-top:8px;width:100%" placeholder="О чём просишь: посидеть с сыном" value="${esc(form.rqText)}">
+      <div class="hint" style="margin:6px 0 0;width:100%">${esc(P[form.rqTo].name)} получит просьбу. Если согласится — будет занят в это время.</div>` : '<div class="hint" style="margin:6px 0 0;width:100%">Например, посидеть с ребёнком, пока ты занят(а). Можно одного человека.</div>');
+}
 function pickHTML(){
   const me = ME();
   const fr = PEOPLE.filter(p => p.id !== me && links.friends.includes(p.id));
@@ -959,15 +993,18 @@ function saveForm(){
   if (!from || !to) return err.textContent = 'Укажите обе даты.';
   if (to < from) return err.textContent = 'Дата «по» раньше даты «с».';
   const me = ME(), wasEdit = !!form.id, r = fmtRange(from,to);
+  if ($('fRq')) form.rqText = $('fRq').value.trim();
+  if (form.rqTo && !form.rqText) return err.textContent = 'Напишите, о чём просите, или снимите выбор человека.';
+  const req = form.rqTo && form.rqText ? {to:form.rqTo, text:form.rqText} : null;
   if (form.runs){
     for (const [a, b] of form.runs){
       const rr = fmtRange(a, b);
-      commit({op:'put', entry:{id:newId(), what, from:a, to:b, people:[...form.people], vis: form.visAll ? 'all' : [...form.vis], tf: form.tf || '', tt: form.tt || '', noRem: !!form.noRem},
+      commit({op:'put', entry:{id:newId(), what, from:a, to:b, people:[...form.people], vis: form.visAll ? 'all' : [...form.vis], tf: form.tf || '', tt: form.tt || '', noRem: !!form.noRem, req},
         note:`${P[me].name} ${verb(me,'добавил')}: ${what}, ${rr}`, inviteNote:`${P[me].name} зовёт: ${what}, ${rr}`});
     }
     closeSheet(); toast('Добавлено', `${what}: ${form.runs.length} ${plural(form.runs.length,'дело','дела','дел')}`); render(); return;
   }
-  const entry = {id: form.id || newId(), what, from, to, people:[...form.people], vis: form.visAll ? 'all' : [...form.vis], tf: form.tf || '', tt: form.tt || '', noRem: !!form.noRem};
+  const entry = {id: form.id || newId(), what, from, to, people:[...form.people], vis: form.visAll ? 'all' : [...form.vis], tf: form.tf || '', tt: form.tt || '', noRem: !!form.noRem, req};
   const newInv = entry.people.filter(p => !(form.src && (form.src.who.includes(p) || (form.src.inv || {})[p])));
   commit({op:'put', entry, note:`${P[me].name} ${verb(me, wasEdit ? 'изменил' : 'добавил')}: ${what}, ${r}`, inviteNote:`${P[me].name} зовёт: ${what}, ${r}`});
   closeSheet();
@@ -1008,6 +1045,12 @@ function openView(e, dir){
   else if (mine) btns = `<button class="btn ghost press" data-rsvp="${e.id}" data-ans="no">Не пойду</button>`;
   else if (st === 'ask') btns = `<div class="hint" style="margin-top:14px">Ты попросил${P[me].f ? 'ась' : 'ся'} — ждём, что ответит ${esc(P[by].name)}.</div>`;
   else if (srvNew() && links.friends.includes(by)) btns = `<button class="btn ok press" data-act="ask" data-id="${e.id}">Хочу с вами</button><div class="hint" style="margin-top:8px">${esc(P[by].name)} получит просьбу и решит.</div>`;
+  if (e.req && e.req.to === me){
+    if (e.req.st === 'wait') btns = `<div class="hint" style="margin-top:14px">${esc(P[by].name)} просит: <b>${esc(e.req.text)}</b></div><button class="btn ok press" data-rqa="${e.id}" data-ans="yes">Помогу</button><button class="btn plain press" data-rqa="${e.id}" data-ans="no">Не могу</button>`;
+    else if (e.req.st === 'yes') btns = `<button class="btn ghost press" data-rqa="${e.id}" data-ans="no">Не смогу</button>`;
+    else btns = `<button class="btn ok press" data-rqa="${e.id}" data-ans="yes">Передумал${P[me].f ? 'а' : ''} — помогу</button>`;
+  }
+  const rqRow = e.req && P[e.req.to] ? `<div class="prow" style="${cs(P[e.req.to])}"><span class="dot"></span>${esc(P[e.req.to].name)}<span class="st">просьба: ${esc(e.req.text)} · ${reqSt(e)}</span></div>` : '';
   const visTxt = !own ? '' : Array.isArray(e.vis) ? `${LOCK} видят: ${e.vis.length ? joinNames(e.vis) : 'только вы'}` : 'видят все ваши люди';
   openSheet(`<div class="vnav"><button class="lnk press" data-act="vPrev"${i > 0 ? '' : ' disabled'} aria-label="Предыдущее дело">‹</button>
       <span>${i + 1} из ${list.length}</span><button class="lnk press" data-act="vNext"${i < list.length - 1 ? '' : ' disabled'} aria-label="Следующее дело">›</button></div>
@@ -1015,7 +1058,7 @@ function openView(e, dir){
     <h2>${esc(e.what)}</h2>
     <div class="vmeta"><span>${WDF[parse(e.from).getDay()].toLowerCase()}, ${fmtRange(e.from, e.to)}${days > 1 ? ` · ${days} ${plural(days,'день','дня','дней')}` : ''}</span>
       ${e.tf ? `<span>время: ${e.tf}${e.tt ? '–' + e.tt : ''}</span>` : ''}${visTxt ? `<span>${visTxt}</span>` : ''}</div>
-    <div class="plist">${people.map(p => `<div class="prow" style="${cs(P[p])}"><span class="dot"></span>${esc(P[p].name)}<span class="st">${statusOf(e,p)}</span></div>`).join('')}</div>
+    <div class="plist">${people.map(p => `<div class="prow" style="${cs(P[p])}"><span class="dot"></span>${esc(P[p].name)}<span class="st">${statusOf(e,p)}</span></div>`).join('')}${rqRow}</div>
     ${btns || `<div class="hint" style="margin-top:14px">Изменить может только ${esc(P[by].name)}.</div>`}
     <div class="hint" style="margin-top:10px;text-align:center">Листай влево-вправо — соседние дела</div></div>`);
 }
@@ -1198,10 +1241,13 @@ function logout(){
 
 /* ---------- пуш-уведомления ---------- */
 const b64ToU8 = b => { const s = (b + '='.repeat((4 - b.length % 4) % 4)).replace(/-/g,'+').replace(/_/g,'/'); return Uint8Array.from(atob(s), c => c.charCodeAt(0)); };
+// узнаём, включены ли пуши, уже после первой отрисовки — поэтому перерисовываем экран, где стоит переключатель
 async function refreshPushState(){
-  try { const reg = await navigator.serviceWorker.ready; pushOn = !!(await reg.pushManager.getSubscription()) && Notification.permission === 'granted'; }
+  const was = pushOn; let sub = null;
+  try { const reg = await navigator.serviceWorker.ready; sub = await reg.pushManager.getSubscription(); pushOn = !!sub && Notification.permission === 'granted'; }
   catch(e){ pushOn = false; }
-  if (state.view === 'list') render();
+  if (pushOn && auth.token) api('POST', '/subscribe', {sub:sub.toJSON()}).catch(() => {});   // освежаем подписку на сервере
+  if (pushOn !== was && (state.view === 'set' || state.view === 'list')) render();
 }
 async function subscribePush(ask){
   if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window))
@@ -1258,6 +1304,9 @@ document.addEventListener('click', ev => {
   if (d.sugg){ $('kSugg').hidden = true; $('kNick').value = ''; linkAction(d.sugg, 'knock'); return; }
   if (d.adm){ if (d.aa === 'reject' && t.dataset.sure !== '1'){ t.dataset.sure = '1'; t.textContent = 'Точно?'; return; } adminAction(d.adm, d.aa); return; }
   if (d.rsvp){ rsvp(d.rsvp, d.ans); return; }
+  if (d.rqa){ const e = entries.find(x => x.id === d.rqa); if (!e) return; commit({op:'req', id:d.rqa, ans:d.ans}); closeSheet(); render();
+    toast(d.ans === 'yes' ? 'Поможешь' : 'Отказ отправлен', `${e.req.text}, ${fmtRange(e.from, e.to)} — ${P[owner(e)].name} узнает`); return; }
+  if (d.rqp){ if ($('fRq')) form.rqText = $('fRq').value; form.rqTo = form.rqTo === d.rqp ? '' : d.rqp; $('rqPick').innerHTML = rqHTML(); if (form.rqTo && $('fRq')) $('fRq').focus(); return; }
   if (d.answ){ const e = entries.find(x => x.id === d.answ); commit({op:'answer', id:d.answ, who:d.who, ans:d.ans}); render();
     toast(d.ans === 'yes' ? 'Взяли' : 'Отказали', `${P[d.who] ? P[d.who].name : ''}${e ? ' · ' + e.what : ''}`); return; }
   if (d.day){ if (Date.now() - lpAt < 600) return; if (picking){ togglePick(d.day); return; } openDay(d.day); return; }
@@ -1321,6 +1370,8 @@ document.addEventListener('click', ev => {
       linkAction(v, 'knock'); break; }
     case 'pushAll': api('PATCH', '/me', {pushAll: !meInfo.pushAll}).then(sync).catch(() => toast('Не получилось', 'Нет связи с сервером')); break;
     case 'push': pushOn ? unsubscribePush() : subscribePush(true); break;
+    case 'pushTest': api('POST', '/pushtest').then(r => toast('Проверка', r.devices ? `Пуш отправлен (устройств: ${r.devices}). Не пришёл за минуту — выключи и включи уведомления.` : 'Сервер не знает этот телефон — выключи и включи уведомления'))
+      .catch(e => toast('Проверка', e.status === 404 ? 'Обновите функцию на сервере' : 'Нет связи с сервером')); break;
   }
 });
 // лёгкая вибрация на нажатие (Android; iPhone из браузера не умеет)
