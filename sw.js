@@ -1,6 +1,6 @@
 // Кто когда — service worker. При изменении файлов меняйте VERSION.
-const VERSION = 'kk-61';
-const SHELL = ['./', 'index.html', 'app.js?v=61', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'badge-96.png'];
+const VERSION = 'kk-63';
+const SHELL = ['./', 'index.html', 'app.js?v=63', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'badge-96.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
