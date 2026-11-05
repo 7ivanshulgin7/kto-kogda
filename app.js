@@ -2,7 +2,7 @@
 // подпись автора: знак T/V-бык (V из Монеток, T с рогами)
 const SIG = '<svg class="sig" viewBox="0 -16 229 98" role="img" aria-label="itivan" style="height:29px;width:auto;display:block;overflow:visible;color:var(--ink)"><svg x="2" y="5" width="80" height="74" viewBox="40 0 220 160"><polyline class="vo" points="64,-20 150,172 236,-20" fill="none" stroke-width="42"/><polyline points="64,-20 150,172 236,-20" fill="none" stroke="#FF2E93" stroke-width="30"/></svg><svg x="2" y="5" width="80" height="74" viewBox="40 0 220 160" style="overflow:visible"><g style="fill:var(--bg);stroke:var(--bg)" stroke-width="20" stroke-linejoin="round"><path d="M150 0 L100 0 Q66 0 48 -44 Q48 30 100 30 L150 30 Z"/><path d="M150 0 L200 0 Q234 0 252 -44 Q252 30 200 30 L150 30 Z"/><path d="M135 0 H165 V160 H135 Z"/></g><g fill="currentColor"><path d="M150 0 L100 0 Q66 0 48 -44 Q48 30 100 30 L150 30 Z"/><path d="M150 0 L200 0 Q234 0 252 -44 Q252 30 200 30 L150 30 Z"/><path d="M135 0 H165 V160 H135 Z"/></g></svg><path fill="currentColor" d="M102.6 55.6V50.5H109.8V39.9H103.6V34.7H115.2V50.5H121.2V55.6ZM112.1 31.4Q110.6 31.4 109.6 30.6Q108.7 29.8 108.7 28.5Q108.7 27.1 109.6 26.3Q110.6 25.5 112.1 25.5Q113.7 25.5 114.6 26.3Q115.5 27.1 115.5 28.5Q115.5 29.8 114.6 30.6Q113.7 31.4 112.1 31.4Z M134.9 55.6Q131.7 55.6 129.9 53.8Q128.1 52.0 128.1 48.8V39.9H122.6V34.7H128.1V28.8H133.8V34.7H141.6V39.9H133.8V48.8Q133.8 50.5 135.5 50.5H141.2V55.6Z M145.2 55.6V50.5H152.4V39.9H146.1V34.7H157.7V50.5H163.8V55.6ZM154.7 31.4Q153.1 31.4 152.2 30.6Q151.2 29.8 151.2 28.5Q151.2 27.1 152.2 26.3Q153.1 25.5 154.7 25.5Q156.2 25.5 157.2 26.3Q158.1 27.1 158.1 28.5Q158.1 29.8 157.2 30.6Q156.2 31.4 154.7 31.4Z M171.7 55.6 164.8 34.7H170.7L174.2 46.5Q174.5 47.5 174.8 48.8Q175.1 50.0 175.3 50.8Q175.5 50.0 175.7 48.8Q176.0 47.5 176.3 46.5L179.8 34.7H185.6L178.8 55.6Z M193.8 56.0Q190.6 56.0 188.8 54.3Q186.9 52.6 186.9 49.7Q186.9 46.5 189.1 44.8Q191.3 43.1 195.4 43.1H199.7V41.6Q199.7 40.4 198.9 39.6Q198.0 38.9 196.6 38.9Q195.3 38.9 194.4 39.5Q193.5 40.1 193.3 41.2H187.8Q188.1 38.0 190.6 36.2Q193.0 34.3 196.8 34.3Q200.8 34.3 203.1 36.3Q205.4 38.3 205.4 41.6V55.6H199.9V52.2H199.8Q199.5 53.7 198.3 54.6Q196.6 56.0 193.8 56.0ZM195.9 51.8Q197.6 51.8 198.7 50.9Q199.7 50.0 199.7 48.6V46.4H195.5Q194.2 46.4 193.4 47.1Q192.6 47.8 192.6 49.1Q192.6 50.3 193.5 51.1Q194.4 51.8 195.9 51.8Z M208.9 55.6V34.7H214.4V38.7H214.5Q214.8 37.0 215.9 35.9Q217.4 34.3 220.0 34.3Q223.0 34.3 224.9 36.5Q226.7 38.6 226.7 42.1V55.6H221.0V42.7Q221.0 41.1 220.2 40.2Q219.3 39.3 217.8 39.3Q216.2 39.3 215.4 40.2Q214.6 41.1 214.6 42.7V55.6Z"/></svg>';
 // версия под подписью — менять вместе с VERSION в sw.js
-const APP_VER = '68 от 06.11.2026';
+const APP_VER = '70 от 06.11.2026';
 const CONFIG = {
   // Адрес API Gateway из Яндекс Cloud, напр. 'https://d5dxxxxxxxx.apigw.yandexcloud.net'
   // Пусто — демо-режим: данные хранятся только на этом устройстве, вы — DEMO_ME.
@@ -62,7 +62,8 @@ function setPeople(list, chipIds){
   }
   PEOPLE = chipIds.filter(id => P[id]).map(id => P[id]);
 }
-const COLORS = ['#FF375F','#FF9F0A','#FFD60A','#30B05A','#64D2FF','#0A84FF','#5E5CE6','#BF5AF2','#AC8E68','#8E8E93'];
+const COLORS = ['#FF375F','#FF9F0A','#FFD60A','#30B05A','#64D2FF','#0A84FF','#5E5CE6','#BF5AF2','#AC8E68','#8E8E93',
+  '#00C7BE','#A4D65E','#FF7F6E','#D4A017','#D6246E','#1F8A99','#8E4585','#8D5B3E'];   // вторая строка — добавлены 06.11
 const verb = (id, base) => base + (P[id] && P[id].f ? 'а' : '');
 const MONTHS = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
 const MONTHS_G = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
@@ -448,7 +449,7 @@ function blockHTML(y, m, map, V){
     for (const p of busy){ const g = groups.find(g => b[g[0].id] === b[p.id]); g ? g.push(p) : groups.push([p]); }
     const geo = (gs, H = 56, G = 2.5) => { const n = gs.flat().length, u = (H - (gs.length - 1) * G) / n, out = {}; let j = 0;
       gs.forEach((g, gi) => g.forEach(p => { out[p.id] = [j * u + gi * G, (j + 1) * u + gi * G]; j++; })); return out; };
-    const n = busy.length, strip0 = n ? `<span class="bands">${groups.map(g => `<span class="g" style="flex:${g.length}">${g.map(p => `<i style="${csd(p)}"></i>`).join('')}</span>`).join('')}</span>` : '';
+    const n = busy.length, strip0 = n ? `<span class="bands">${groups.map(g => `<span class="g" style="flex:${g.length}">${g.map(p => `<i${b[p.id] && b[p.id].src ? ' class="help"' : ''} style="${csd(p)}"></i>`).join('')}</span>`).join('')}</span>` : '';
     // перемычка к следующему дню — для каждого, у кого то же дело продолжается, по общей высоте полос
     let brs = '', fls = '';
     if (n && dow < 6 && dd < dim){
@@ -558,7 +559,7 @@ function evHTML(e, withDate){
   const mine = owner(e) === ME();
   return `<button class="ev press" data-open="${e.id}">
     ${withDate ? dateCol(e.from) : ''}<span class="caps">${caps}</span>
-    <span style="min-width:0"><div class="what">${e.vis && e.vis !== 'all' ? LOCK : ''}${esc(e.what)}</div><div class="meta">${joinNames(e.who)}${w.length ? ` · ждём: ${joinNames(w)}` : ''}, ${fmtRange(e.from,e.to)}${e.tf ? `, ${e.tf}${e.tt ? '–' + e.tt : ''}` : ''}${Array.isArray(e.vis) ? ` · видят: ${e.vis.length ? joinNames(e.vis) : 'только вы'}` : ''}</div>${rq}</span>
+    <span style="min-width:0"><div class="what">${e.vis && e.vis !== 'all' ? LOCK : ''}${esc(e.what)}${e.req && P[e.req.to] ? `<span class="rqtag${e.req.st === 'yes' ? ' ok' : e.req.st === 'no' ? ' no' : ''}">просьба</span>` : ''}</div><div class="meta">${joinNames(e.who)}${w.length ? ` · ждём: ${joinNames(w)}` : ''}, ${fmtRange(e.from,e.to)}${e.tf ? `, ${e.tf}${e.tt ? '–' + e.tt : ''}` : ''}${Array.isArray(e.vis) ? ` · видят: ${e.vis.length ? joinNames(e.vis) : 'только вы'}` : ''}</div>${rq}</span>
     ${mine ? `<svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>` : ''}</button>`;
 }
 // дела дня — в шторке
@@ -661,14 +662,16 @@ const seg = (attr, cur, opts) => `<div class="seg">${opts.map(([v,t]) => `<butto
 // напоминания: правила пользователя
 const REM_ROWS = [['week','За неделю'],['eve','Накануне'],['morn','В день дела']];
 const timeOpts = cur => Array.from({length:48}, (_, i) => `${pad(Math.floor(i/2))}:${i % 2 ? '30' : '00'}`).map(t => `<option${t === cur ? ' selected' : ''}>${t}</option>`).join('');
+// понятный выключатель как в iOS: справа, зелёный — включено
+const tog = (act, on, attrs = '', label = '') => `<button class="tog press${on ? ' on' : ''}" role="switch" aria-checked="${!!on}" aria-label="${label}" data-act="${act}"${attrs}><i></i></button>`;
 function remHTML(){
   if (!ONLINE || !meInfo || !meInfo.rem) return '';
   const r = meInfo.rem;
   let h = `<div class="sec" style="margin-top:28px">Напоминания</div><div class="set">`;
-  for (const [k, t] of REM_ROWS) h += `<div class="setRow"><button class="lnk press${r[k].on ? ' on' : ''}" data-act="remOn" data-k="${k}">${r[k].on ? 'Вкл' : 'Выкл'}</button><div class="k" style="flex:1">${t}</div>
-    <select class="tsel" data-remt="${k}"${r[k].on ? '' : ' disabled'}>${timeOpts(r[k].t)}</select></div>`;
-  h += `<div class="setRow"><button class="lnk press${r.before.on ? ' on' : ''}" data-act="remOn" data-k="before">${r.before.on ? 'Вкл' : 'Выкл'}</button><div style="flex:1"><div class="k">До начала</div><div class="v">если у дела указано время</div></div>
-    <select class="tsel" data-remb="1"${r.before.on ? '' : ' disabled'}>${[[15,'за 15 мин'],[30,'за 30 мин'],[60,'за 1 ч'],[120,'за 2 ч'],[180,'за 3 ч']].map(([v, l]) => `<option value="${v}"${v === r.before.min ? ' selected' : ''}>${l}</option>`).join('')}</select></div>`;
+  for (const [k, t] of REM_ROWS) h += `<div class="setRow"><div class="k" style="flex:1">${t}</div>
+    <select class="tsel" data-remt="${k}"${r[k].on ? '' : ' disabled'}>${timeOpts(r[k].t)}</select>${tog('remOn', r[k].on, ` data-k="${k}"`, t)}</div>`;
+  h += `<div class="setRow"><div style="flex:1"><div class="k">До начала</div><div class="v">если у дела указано время</div></div>
+    <select class="tsel" data-remb="1"${r.before.on ? '' : ' disabled'}>${[[15,'за 15 мин'],[30,'за 30 мин'],[60,'за 1 ч'],[120,'за 2 ч'],[180,'за 3 ч']].map(([v, l]) => `<option value="${v}"${v === r.before.min ? ' selected' : ''}>${l}</option>`).join('')}</select>${tog('remOn', r.before.on, ' data-k="before"', 'До начала')}</div>`;
   return h + `<div class="setRow"><div class="v">Приходят пушем по твоим делам и тем, куда ты идёшь. ${pushOn ? '' : '<b>Сначала включи уведомления.</b>'}</div></div></div>`;
 }
 function saveRem(r){
@@ -687,7 +690,7 @@ function settingsHTML(){
       : (isIOS && !standalone) ? 'На iPhone сначала: Поделиться → «На экран Домой»'
       : 'Пуш о приглашениях, запросах и делах связей';
     h += `<div class="setRow"><div><div class="k">${esc(meInfo.name)} · @${meInfo.id}</div><div class="v">${pending.length ? `Не отправлено изменений: ${pending.length}` : 'Всё синхронизировано'}</div></div><button class="lnk press" data-act="profile">Профиль</button></div>
-      <div class="setRow"><div><div class="k">Уведомления</div><div class="v">${pushNote}</div></div><button class="lnk press${pushOn ? ' on' : ''}" data-act="push">${pushOn ? 'Включены' : 'Включить'}</button></div>
+      <div class="setRow"><div><div class="k">Уведомления</div><div class="v">${pushNote}</div></div>${tog('push', pushOn, '', 'Пуш-уведомления')}</div>
       <div class="setRow"><div><div class="k">О делах всех связей</div><div class="v">${meInfo.pushAll ? 'Пуш о каждом новом деле' : 'Только приглашения и запросы'}</div></div><button class="lnk press${meInfo.pushAll ? ' on' : ''}" data-act="pushAll">${meInfo.pushAll ? 'Да' : 'Нет'}</button></div>
       <div class="setRow"><div><div class="k">Ключ входа</div><div class="v">Чтобы войти на другом телефоне</div></div><button class="lnk press" data-act="showKey">Показать</button></div>`;
   }
@@ -772,9 +775,9 @@ function lookHTML(){
 function notifHTML(){
   const denied = 'Notification' in window && Notification.permission === 'denied';
   const pushNote = pushOn ? 'Приглашения, запросы и напоминания' : denied ? 'Телефон запретил уведомления: Настройки телефона → Приложения → Кто когда → Уведомления → разрешить' : (isIOS && !standalone) ? 'На iPhone сначала: Поделиться → «На экран Домой»' : 'Включи, чтобы видеть, кто что добавил';
-  return `<div class="set"><div class="setRow"><div><div class="k">Пуш-уведомления</div><div class="v">${pushNote}</div></div><button class="lnk press${pushOn ? ' on' : ''}" data-act="push">${pushOn ? 'Включены' : 'Включить'}</button></div>
+  return `<div class="set"><div class="setRow"><div><div class="k">Пуш-уведомления</div><div class="v">${pushNote}</div></div>${tog('push', pushOn, '', 'Пуш-уведомления')}</div>
     ${pushOn ? `<div class="setRow"><div><div class="k">Проверить</div><div class="v">Пришлём пробный пуш на этот телефон</div></div><button class="lnk press" data-act="pushTest">Проверить</button></div>` : ''}
-    <div class="setRow"><div><div class="k">Пуш о каждом новом деле</div><div class="v">${meInfo.pushAll ? 'Включено — пуш, когда кто-то добавил дело' : 'Только приглашения, просьбы и напоминания. Остальное — в «Пока тебя не было»'}</div></div><button class="lnk press${meInfo.pushAll ? ' on' : ''}" data-act="pushAll">${meInfo.pushAll ? 'Да' : 'Нет'}</button></div></div>`;
+    <div class="setRow"><div><div class="k">Пуш о каждом новом деле</div><div class="v">${meInfo.pushAll ? 'Включено — пуш, когда кто-то добавил дело' : 'Только приглашения, просьбы и напоминания. Остальное — в «Пока тебя не было»'}</div></div>${tog('pushAll', meInfo.pushAll, '', 'Пуш о каждом новом деле')}</div></div>`;
 }
 function meHTML(){
   return `<div class="set"><div class="setRow"><div><div class="k">${esc(meInfo.name)} · @${meInfo.id}</div><div class="v">${pending.length ? `Не отправлено изменений: ${pending.length}` : 'Всё сохранено'}</div></div><button class="lnk press" data-act="profile">Изменить</button></div>
