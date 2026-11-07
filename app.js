@@ -2,7 +2,7 @@
 // подпись автора: знак T/V-бык (V из Монеток, T с рогами)
 const SIG = '<svg class="sig" viewBox="0 -16 229 98" role="img" aria-label="itivan" style="height:29px;width:auto;display:block;overflow:visible;color:var(--ink)"><svg x="2" y="5" width="80" height="74" viewBox="40 0 220 160"><polyline class="vo" points="64,-20 150,172 236,-20" fill="none" stroke-width="42"/><polyline points="64,-20 150,172 236,-20" fill="none" stroke="#FF2E93" stroke-width="30"/></svg><svg x="2" y="5" width="80" height="74" viewBox="40 0 220 160" style="overflow:visible"><g style="fill:var(--bg);stroke:var(--bg)" stroke-width="20" stroke-linejoin="round"><path d="M150 0 L100 0 Q66 0 48 -44 Q48 30 100 30 L150 30 Z"/><path d="M150 0 L200 0 Q234 0 252 -44 Q252 30 200 30 L150 30 Z"/><path d="M135 0 H165 V160 H135 Z"/></g><g fill="currentColor"><path d="M150 0 L100 0 Q66 0 48 -44 Q48 30 100 30 L150 30 Z"/><path d="M150 0 L200 0 Q234 0 252 -44 Q252 30 200 30 L150 30 Z"/><path d="M135 0 H165 V160 H135 Z"/></g></svg><path fill="currentColor" d="M102.6 55.6V50.5H109.8V39.9H103.6V34.7H115.2V50.5H121.2V55.6ZM112.1 31.4Q110.6 31.4 109.6 30.6Q108.7 29.8 108.7 28.5Q108.7 27.1 109.6 26.3Q110.6 25.5 112.1 25.5Q113.7 25.5 114.6 26.3Q115.5 27.1 115.5 28.5Q115.5 29.8 114.6 30.6Q113.7 31.4 112.1 31.4Z M134.9 55.6Q131.7 55.6 129.9 53.8Q128.1 52.0 128.1 48.8V39.9H122.6V34.7H128.1V28.8H133.8V34.7H141.6V39.9H133.8V48.8Q133.8 50.5 135.5 50.5H141.2V55.6Z M145.2 55.6V50.5H152.4V39.9H146.1V34.7H157.7V50.5H163.8V55.6ZM154.7 31.4Q153.1 31.4 152.2 30.6Q151.2 29.8 151.2 28.5Q151.2 27.1 152.2 26.3Q153.1 25.5 154.7 25.5Q156.2 25.5 157.2 26.3Q158.1 27.1 158.1 28.5Q158.1 29.8 157.2 30.6Q156.2 31.4 154.7 31.4Z M171.7 55.6 164.8 34.7H170.7L174.2 46.5Q174.5 47.5 174.8 48.8Q175.1 50.0 175.3 50.8Q175.5 50.0 175.7 48.8Q176.0 47.5 176.3 46.5L179.8 34.7H185.6L178.8 55.6Z M193.8 56.0Q190.6 56.0 188.8 54.3Q186.9 52.6 186.9 49.7Q186.9 46.5 189.1 44.8Q191.3 43.1 195.4 43.1H199.7V41.6Q199.7 40.4 198.9 39.6Q198.0 38.9 196.6 38.9Q195.3 38.9 194.4 39.5Q193.5 40.1 193.3 41.2H187.8Q188.1 38.0 190.6 36.2Q193.0 34.3 196.8 34.3Q200.8 34.3 203.1 36.3Q205.4 38.3 205.4 41.6V55.6H199.9V52.2H199.8Q199.5 53.7 198.3 54.6Q196.6 56.0 193.8 56.0ZM195.9 51.8Q197.6 51.8 198.7 50.9Q199.7 50.0 199.7 48.6V46.4H195.5Q194.2 46.4 193.4 47.1Q192.6 47.8 192.6 49.1Q192.6 50.3 193.5 51.1Q194.4 51.8 195.9 51.8Z M208.9 55.6V34.7H214.4V38.7H214.5Q214.8 37.0 215.9 35.9Q217.4 34.3 220.0 34.3Q223.0 34.3 224.9 36.5Q226.7 38.6 226.7 42.1V55.6H221.0V42.7Q221.0 41.1 220.2 40.2Q219.3 39.3 217.8 39.3Q216.2 39.3 215.4 40.2Q214.6 41.1 214.6 42.7V55.6Z"/></svg>';
 // версия под подписью — менять вместе с VERSION в sw.js
-const APP_VER = '81 от 07.11.2026';
+const APP_VER = '84 от 07.11.2026';
 const CONFIG = {
   // Адрес API Gateway из Яндекс Cloud, напр. 'https://d5dxxxxxxxx.apigw.yandexcloud.net'
   // Пусто — демо-режим: данные хранятся только на этом устройстве, вы — DEMO_ME.
@@ -803,9 +803,14 @@ function installCardHTML(){
   return `<div class="inst" role="region" aria-label="Как установить"><button class="x press" data-act="instHide" aria-label="Закрыть">×</button>
     <b>Установите на телефон</b>${installSteps()}</div>`;
 }
+// инструкция по установке: для своего телефона сверху, вторая — ниже
 function openHowto(){
-  if (standalone) return toast('Установка', 'Приложение уже установлено');
-  store(KEYS.inst, 0); state.view = 'month'; render(); window.scrollTo({top:0, behavior:'smooth'});
+  const ios = `<div class="gsec"><b>📱 iPhone — только Safari</b><ol class="hsteps"><li>Открой ссылку в <b>Safari</b>.</li><li>${ICO_SHARE} «Поделиться» внизу.</li><li>${ICO_PLUS} «На экран „Домой“» → «Добавить».</li><li>Открывай с иконки — так работают уведомления.</li></ol></div>`;
+  const andr = `<div class="gsec"><b>🤖 Android — только Google Chrome</b>${isAndroid && !isChrome ? '<div class="hwarn">Сейчас открыто не в Chrome. В Яндекс Браузере и других приложение не ставится нормально и не приходят уведомления.</div>' : ''}<ol class="hsteps"><li>Открой ссылку в <b>Google Chrome</b>.</li><li>Меню ⋮ справа вверху.</li><li>«Установить приложение».</li><li>Открывай с иконки.</li></ol></div>`;
+  openSheet(`<h2>Как установить</h2>${standalone ? '<div class="hint">Уже установлено 👍</div>' : ''}
+    ${isAndroid ? andr + ios : ios + andr}
+    <div class="gnote" style="margin-top:8px">Открыл из Телеграма или WhatsApp? Нажми ⋮ или ⋯ → «Открыть в браузере». Уже был аккаунт? Вставь «Ключ входа».</div>
+    ${installEvt ? '<button class="btn ok press" data-act="install">Установить сейчас</button>' : ''}`);
 }
 async function doInstall(){
   if (!installEvt) return openHowto();
@@ -838,7 +843,6 @@ function saveRem(r){
 function settingsHTML(){
   let h = `<div class="set">
     <div class="setRow"><div class="k">Тема</div>${seg('theme', themeName, [['auto','Авто'],['light','Светлая'],['dark','Тёмная']])}</div>
-    <div class="setRow"><div><div class="k">Установка на телефон</div><div class="v">${standalone ? 'Установлено' : 'Инструкция для iPhone и Android'}</div></div><button class="lnk press" data-act="howto">Как</button></div>
     <div class="setRow"><div class="k">Стиль</div>${seg('skin', skinName, SKINS)}</div>
 `;
   if (!ONLINE) h += `<div class="setRow"><div><div class="k">Демо-режим · вы — ${P[ME()].name}</div><div class="v">Данные только на этом устройстве</div></div><button class="lnk press" data-act="reset">Сбросить</button></div>`;
@@ -907,19 +911,17 @@ const strip = h => h.replace(/^\s*<div class="sec"[^>]*>[^<]*<\/div>/, '');
 function renderSet(){
   const nFr = links.friends.length, nIn = links.incoming.length;
   let h = guideHTML();
-  h += blk('people', BLK_IC.people, '#0A84FF', 'Люди',
-    `${nFr ? `${nFr} ${plural(nFr,'человек','человека','человек')}` : 'пока никого'}${nIn ? ` · стучатся: ${nIn}` : ''} · пригласить`, strip(peopleHTML()));
+  // «Я и мои люди»: профиль, ключ входа и связи в одном блоке
+  const meTop = ONLINE && meInfo ? meHTML() : !ONLINE ? `<div class="set"><div class="setRow"><div><div class="k">Демо-режим: вы — ${esc(P[ME()].name)}</div><div class="v">Данные только на этом устройстве</div></div><button class="lnk press" data-act="reset">Сбросить</button></div></div>` : '';
+  const peopleSub = `${nFr ? `${nFr} ${plural(nFr,'человек','человека','человек')}` : 'пока никого'}${nIn ? ` · стучатся: ${nIn}` : ''}`;
+  h += blk('people', BLK_IC.people, '#0A84FF', 'Я и мои люди', `${ONLINE && meInfo ? esc(meInfo.name) + ' · ' : ''}${peopleSub} · пригласить`, meTop + peopleHTML());
   if (ONLINE && meInfo){
     const r = meInfo.rem, remSub = !srvNew() ? 'скоро' : [r.week.on && 'за неделю', r.eve.on && `накануне ${r.eve.t}`, r.morn.on && `в день ${r.morn.t}`, r.before.on && `за ${r.before.min >= 60 ? r.before.min/60 + ' ч' : r.before.min + ' мин'}`].filter(Boolean).join(', ') || 'выключены';
     h += blk('notif', BLK_IC.bell, '#FF9F0A', 'Уведомления', `${pushOn ? 'включены' : 'выключены'} · напоминания: ${remSub}`, notifHTML() + strip(remHTML()));
-    h += blk('me', BLK_IC.me, '#30B05A', 'Профиль и вход', `${esc(meInfo.name)} · @${meInfo.id} · ключ входа`, meHTML());
-  } else if (!ONLINE) {
-    h += blk('me', BLK_IC.me, '#30B05A', 'Демо-режим', `вы — ${esc(P[ME()].name)}, данные только здесь`,
-      `<div class="set"><div class="setRow"><div class="v">Данные только на этом устройстве</div><button class="lnk press" data-act="reset">Сбросить</button></div></div>`);
   }
   const nD = myDates().length;
   h += blk('dates', '<span style="font-size:18px;line-height:1">🎂</span>', '#FF375F', 'Праздники и дни рождения', `${nD ? nD + ' ' + plural(nD, 'дата', 'даты', 'дат') : 'добавить дни рождения'} · список праздников`, datesHTML());
-  h += blk('look', BLK_IC.look, '#BF5AF2', 'Внешний вид', `тема: ${{auto:'авто',light:'светлая',dark:'тёмная'}[themeName]} · стиль ${SKINS.find(x => x[0] === skinName)[1]} · установка`, lookHTML());
+  h += blk('look', BLK_IC.look, '#BF5AF2', 'Внешний вид', `тема: ${{auto:'авто',light:'светлая',dark:'тёмная'}[themeName]} · стиль ${SKINS.find(x => x[0] === skinName)[1]} · цвета`, lookHTML());
   if (meInfo && meInfo.admin) h += blk('dev', BLK_IC.dev, '#8E8E93', 'Разработчик', `${users.filter(u => u.id !== ME()).length} пользователей · блок, ключи`, strip(adminHTML()));
   h += `<p class="itv">${SIG}</p><p class="ver">Кто когда · бета · v${APP_VER}</p>`;
   $('vSet').innerHTML = h;
@@ -929,7 +931,7 @@ function lookHTML(){
     <div class="setRow"><div class="k">Тема</div>${seg('theme', themeName, [['auto','Авто'],['light','Светлая'],['dark','Тёмная']])}</div>
     <div class="setRow"><div class="k">Стиль</div>${seg('skin', skinName, SKINS)}</div>
     <div class="setRow"><div><div class="k">Цвета календаря</div><div class="v">Если полосы кажутся тусклыми — «Ярче»</div></div>${seg('bright', bright, [['soft','Мягкие'],['vivid','Ярче']])}</div>
-    <div class="setRow"><div><div class="k">Установка на телефон</div><div class="v">${standalone ? 'Установлено' : 'Инструкция для iPhone и Android'}</div></div><button class="lnk press" data-act="howto">Как</button></div></div>`;
+    </div>`;
 }
 function notifHTML(){
   const denied = 'Notification' in window && Notification.permission === 'denied';
@@ -955,56 +957,58 @@ const TAB_IC = {
   tip:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>'
 };
 // мини-день для картинок гайда
-const gday = (n, cols) => `<span class="gday${cols.length ? ' filled' : ''}${cols.length > 1 ? ' over' : ''}">${cols.length ? `<span class="bands">${cols.map(c => `<i style="--c:${c}"></i>`).join('')}</span>` : ''}<b>${n}</b></span>`;
+// мини-день для подсказок: cols — цвета полос; opt.help — рамка «помогаю», opt.hol — праздник, opt.ic — значок в углу
+const gday = (n, cols, opt = {}) => `<span class="gday${cols.length ? ' filled' : ''}${cols.length > 1 ? ' over' : ''}${opt.hol ? ' hol' : ''}">${cols.length ? `<span class="bands">${cols.map((c, i) => `<i style="--c:${c}"${opt.help === i ? ' class="help"' : ''}></i>`).join('')}</span>` : ''}${opt.ic ? `<span class="gic2">${opt.ic}</span>` : ''}<b>${n}</b></span>`;
 function guideBody(){
   const [a, b] = [P[ME()] ? P[ME()].color : '#30B05A', '#BF5AF2'];
   return `<div class="gbody">
-  <div class="gsec"><b>1. Смотрим, кто занят</b>
+  <div class="gsec"><b>1. Кто когда занят</b>
     <div class="gflow3">
       <span class="gex">${gday(12, [])}<span><b>Пусто</b>все свободны</span></span>
-      <span class="gex">${gday(13, [a])}<span><b>Одна полоска</b>один занят</span></span>
-      <span class="gex">${gday(14, [a, b])}<span><b>Много полосок</b>заняты несколько</span></span>
+      <span class="gex">${gday(13, [a])}<span><b>Полоска</b>человек занят</span></span>
+      <span class="gex">${gday(14, [a, b])}<span><b>Две</b>заняты оба</span></span>
     </div>
-    <div class="gnote">У каждого человека свой цвет. Полоска в дне — этот человек занят.</div>
-    <div class="gnote">Нажми на день — увидишь, кто чем занят.</div></div>
+    <div class="gnote">У каждого свой цвет. Нажми на день — увидишь, кто чем занят. Листай дни свайпом влево-вправо.</div></div>
 
-  <div class="gsec"><b>2. Записываем своё дело</b>
-    <div class="gsteps"><span class="gstep">+</span><span class="garr">→</span><span class="gstep wide">Что за дело</span><span class="garr">→</span><span class="gstep wide">Когда</span><span class="garr">→</span><span class="gstep wide ok">Сохранить</span></div>
-    <div class="gnote">Нажми большую кнопку <b>+</b> внизу. Напиши, что за дело. Выбери день — крути колёсико пальцем вверх-вниз. Нажми «Сохранить».</div>
-    <div class="gnote"><b>Несколько дней сразу:</b> подержи палец на дне, пока он не выделится. Потом нажимай на другие дни. Внизу нажми «Записать».</div>
-    <div class="gnote"><b>Время</b> можно указать, а можно и не указывать.</div></div>
+  <div class="gsec"><b>2. Своё дело</b>
+    <div class="gnote"><b>+</b> внизу → что за дело → когда → «Сохранить». Много дней сразу: подержи палец на дне и отметь остальные.</div></div>
 
-  <div class="gsec"><b>3. Зовём других</b>
-    <div class="gnote">В деле есть «Позвать». Нажми на имя — человеку придёт вопрос «Иду или не иду?».</div>
-    <div class="gnote">Увидел чужое дело и хочешь тоже? Открой его и нажми <b>«Хочу с вами»</b>. Хозяин дела ответит.</div>
-    <div class="gnote">Своё дело можешь показать <b>всем</b> или <b>только некоторым</b>. Такие дела с замочком.</div></div>
-
-  <div class="gsec"><b>4. Добавляем людей</b>
-    <div class="ggrid">
-      <div class="gcard">${TAB_IC.link}<b>Пригласить</b><span>отправь ссылку тому, кого зовёшь</span></div>
-      <div class="gcard">${TAB_IC.knock}<b>Постучаться</b><span>если он уже здесь — по нику</span></div>
-      <div class="gcard">${TAB_IC.drop}<b>Убрать</b><span>и вы больше не видите друг друга</span></div>
+  <div class="gsec"><b>3. Вместе</b>
+    <div class="gflow3">
+      <span class="gex">${gday(15, [a, b])}<span><b>Позвать</b>придёт «Иду / не иду»</span></span>
+      <span class="gex">${gday(16, [b])}<span><b>Хочу с вами</b>в чужом деле</span></span>
+      <span class="gex">${gday(17, [b, a], {help:1})}<span><b>Попросить</b>«посиди с сыном»</span></span>
     </div>
-    <div class="gnote">Это в Настройках, раздел «Люди». Чужие сюда не попадут — только по твоей ссылке.</div></div>
+    <div class="gnote">Кто согласился помочь — его полоса в рамке.</div></div>
 
-  <div class="gsec"><b>5. Напоминания</b>
-    <div class="gnote">Телефон сам напомнит о деле: накануне вечером и за час до начала. В Настройках можно выбрать, когда напоминать.</div>
-    <div class="gnote">Чтобы напоминания приходили, в Настройках нажми <b>Уведомления → Включить</b>.</div></div>
+  <div class="gsec"><b>4. Даты и праздники</b>
+    <div class="gflow3">
+      <span class="gex">${gday(4, [], {hol:true})}<span><b>Красный</b>выходной, праздник</span></span>
+      <span class="gex">${gday(20, [], {ic:'🎂'})}<span><b>🎂</b>день рождения</span></span>
+      <span class="gex">${gday(21, [a])}<span><b>Нажми день</b>там все праздники</span></span>
+    </div>
+    <div class="gnote">Дни рождения — в Настройках → «Праздники и дни рождения». «Поделиться» — человек добавит дату себе в один тап.</div></div>
 
-  <div class="gsec"><b>6. Кнопки внизу</b>
+  <div class="gsec"><b>5. Уведомления</b>
+    <div class="gnote">Включи в Настройках. Придут приглашения, просьбы и напоминания. Остальное — в карточке «Пока тебя не было».</div></div>
+
+  <div class="gsec"><b>6. Внизу</b>
     <div class="gwhere">
-      <span>${TAB_IC.month}<b>Месяц</b>календарь, листай вниз</span>
-      <span>${TAB_IC.year}<b>Год</b>весь год сразу</span>
-      <span>${TAB_IC.list}<b>Ближайшее</b>что скоро и когда все свободны</span>
-      <span>${TAB_IC.set}<b>Настройки</b>люди, уведомления</span>
-    </div></div>
+      <span>${TAB_IC.month}<b>Месяц</b>календарь</span>
+      <span>${TAB_IC.year}<b>Год</b>весь год</span>
+      <span>${TAB_IC.list}<b>Ближайшее</b>что скоро</span>
+      <span>${TAB_IC.set}<b>Настройки</b>люди, даты</span>
+    </div>
+    <div class="gnote">Между ними можно листать свайпом.</div></div>
 
   <div class="gsec gwarn">${TAB_IC.tip}<div><b>Если что-то не так</b><br>
-    • Приложение не ставится на Android — закрой все вкладки в Chrome (квадратик с цифрой → ⋮ → «Закрыть все вкладки») и открой ссылку снова.<br>
-    • Новый телефон — в Настройках возьми «Ключ входа» и вставь его на новом телефоне.</div></div>
+    • Android: только <b>Google Chrome</b>. В Яндекс Браузере не работают уведомления.<br>
+    • Новый телефон — «Ключ входа» в Настройках → «Я и мои люди».</div></div>
   </div>`;
 }
-const guideHTML = () => `<details class="set gbox"${guideOpen ? ' open' : ''} id="guideBox"><summary><span class="gic">${TAB_IC.tip}</span><span class="gtt"><b>Как это работает</b><small>просто и по шагам</small></span><svg class="arr" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>${guideBody()}</details>`;
+const guideHTML = () => `<details class="set gbox"${guideOpen ? ' open' : ''} id="guideBox"><summary><span class="gic">${TAB_IC.tip}</span><span class="gtt"><b>Что мне делать?</b><small>я ничего не понимаю</small></span><svg class="arr" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+  <div class="setRow" style="padding:4px 0 14px"><div><div class="k">📲 Установить на телефон</div><div class="v">${standalone ? 'Уже установлено — открывай с иконки' : 'Сначала это: иконка на экране, уведомления, работает как приложение'}</div></div><button class="lnk press" data-act="howto">Как</button></div>
+  ${guideBody()}</details>`;
 
 function render(){
   const v = state.view, multi = isMulti(v), plain = v === 'list' || v === 'set';
