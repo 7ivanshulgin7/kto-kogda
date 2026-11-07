@@ -161,9 +161,20 @@ body.vivid .bands i{background:var(--c)}
 /* «Попросить»: полоса того, кто согласился помочь, — круглая рамка (по перемычкам — линии сверху и снизу) */
 /* рамка рисуется по скруглённому блоку, а не по полосе внутри — иначе углы обрезались */
 .day .bands .g.help{position:relative}
-.day .bands .g.help::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 0 0 2px var(--ink);pointer-events:none;z-index:0}
-.day .bands.br i.help{box-shadow:inset 0 2px 0 var(--ink),inset 0 -2px 0 var(--ink)}
-.md .bands i.help{box-shadow:inset 0 0 0 1.5px var(--ink)}
+.day .bands .g.help::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 0 0 2px #000;pointer-events:none;z-index:0}
+.day .bands.br i.help{box-shadow:inset 0 2px 0 #000,inset 0 -2px 0 #000}
+.md .bands i.help{box-shadow:inset 0 0 0 1.5px #000}
+/* тёмная тема: рамка чуть внутри полосы — иначе чёрное сливается с чёрным фоном */
+:root[data-theme="dark"] .day .bands .g.help::after{inset:3px;border-radius:11px}
+:root[data-theme="dark"] .day .bands.br i.help{box-shadow:none}
+:root[data-theme="dark"] .day .bands.br i.help::before,:root[data-theme="dark"] .day .bands.br i.help::after{content:"";position:absolute;left:0;right:0;height:2px;background:#000}
+:root[data-theme="dark"] .day .bands.br i.help::before{top:3px}.day .bands.br i.help::after{bottom:3px}
+@media (prefers-color-scheme:dark){
+:root:not([data-theme="light"]) .day .bands .g.help::after{inset:3px;border-radius:11px}
+:root:not([data-theme="light"]) .day .bands.br i.help{box-shadow:none}
+:root:not([data-theme="light"]) .day .bands.br i.help::before,:root:not([data-theme="light"]) .day .bands.br i.help::after{content:"";position:absolute;left:0;right:0;height:2px;background:#000}
+:root:not([data-theme="light"]) .day .bands.br i.help::before{top:3px}.day .bands.br i.help::after{bottom:3px}
+}
 .rqtag{display:inline-block;margin-left:8px;padding:1px 7px;border-radius:8px;font-size:11px;font-weight:700;vertical-align:2px;background:color-mix(in srgb,var(--acc) 18%,transparent);color:var(--acc)}
 .rqtag.ok{background:color-mix(in srgb,#30B05A 20%,transparent);color:#30B05A}.rqtag.no{background:var(--field);color:var(--muted)}
 .day .dt{position:absolute;top:3px;left:4px;font-size:12px;line-height:1;z-index:3;pointer-events:none}
@@ -543,6 +554,6 @@ body.feed.skin-oneui .hdr{flex-direction:row;align-items:flex-end;gap:10px}
   <div><div class="t1" id="toastT1"></div><div class="t2" id="toastT2"></div></div>
 </div>
 
-<script src="app.js?v=80"></script>
+<script src="app.js?v=81"></script>
 </body>
 </html>
