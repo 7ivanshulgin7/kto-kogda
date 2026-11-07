@@ -2,7 +2,7 @@
 // подпись автора: знак T/V-бык (V из Монеток, T с рогами)
 const SIG = '<svg class="sig" viewBox="0 -16 229 98" role="img" aria-label="itivan" style="height:29px;width:auto;display:block;overflow:visible;color:var(--ink)"><svg x="2" y="5" width="80" height="74" viewBox="40 0 220 160"><polyline class="vo" points="64,-20 150,172 236,-20" fill="none" stroke-width="42"/><polyline points="64,-20 150,172 236,-20" fill="none" stroke="#FF2E93" stroke-width="30"/></svg><svg x="2" y="5" width="80" height="74" viewBox="40 0 220 160" style="overflow:visible"><g style="fill:var(--bg);stroke:var(--bg)" stroke-width="20" stroke-linejoin="round"><path d="M150 0 L100 0 Q66 0 48 -44 Q48 30 100 30 L150 30 Z"/><path d="M150 0 L200 0 Q234 0 252 -44 Q252 30 200 30 L150 30 Z"/><path d="M135 0 H165 V160 H135 Z"/></g><g fill="currentColor"><path d="M150 0 L100 0 Q66 0 48 -44 Q48 30 100 30 L150 30 Z"/><path d="M150 0 L200 0 Q234 0 252 -44 Q252 30 200 30 L150 30 Z"/><path d="M135 0 H165 V160 H135 Z"/></g></svg><path fill="currentColor" d="M102.6 55.6V50.5H109.8V39.9H103.6V34.7H115.2V50.5H121.2V55.6ZM112.1 31.4Q110.6 31.4 109.6 30.6Q108.7 29.8 108.7 28.5Q108.7 27.1 109.6 26.3Q110.6 25.5 112.1 25.5Q113.7 25.5 114.6 26.3Q115.5 27.1 115.5 28.5Q115.5 29.8 114.6 30.6Q113.7 31.4 112.1 31.4Z M134.9 55.6Q131.7 55.6 129.9 53.8Q128.1 52.0 128.1 48.8V39.9H122.6V34.7H128.1V28.8H133.8V34.7H141.6V39.9H133.8V48.8Q133.8 50.5 135.5 50.5H141.2V55.6Z M145.2 55.6V50.5H152.4V39.9H146.1V34.7H157.7V50.5H163.8V55.6ZM154.7 31.4Q153.1 31.4 152.2 30.6Q151.2 29.8 151.2 28.5Q151.2 27.1 152.2 26.3Q153.1 25.5 154.7 25.5Q156.2 25.5 157.2 26.3Q158.1 27.1 158.1 28.5Q158.1 29.8 157.2 30.6Q156.2 31.4 154.7 31.4Z M171.7 55.6 164.8 34.7H170.7L174.2 46.5Q174.5 47.5 174.8 48.8Q175.1 50.0 175.3 50.8Q175.5 50.0 175.7 48.8Q176.0 47.5 176.3 46.5L179.8 34.7H185.6L178.8 55.6Z M193.8 56.0Q190.6 56.0 188.8 54.3Q186.9 52.6 186.9 49.7Q186.9 46.5 189.1 44.8Q191.3 43.1 195.4 43.1H199.7V41.6Q199.7 40.4 198.9 39.6Q198.0 38.9 196.6 38.9Q195.3 38.9 194.4 39.5Q193.5 40.1 193.3 41.2H187.8Q188.1 38.0 190.6 36.2Q193.0 34.3 196.8 34.3Q200.8 34.3 203.1 36.3Q205.4 38.3 205.4 41.6V55.6H199.9V52.2H199.8Q199.5 53.7 198.3 54.6Q196.6 56.0 193.8 56.0ZM195.9 51.8Q197.6 51.8 198.7 50.9Q199.7 50.0 199.7 48.6V46.4H195.5Q194.2 46.4 193.4 47.1Q192.6 47.8 192.6 49.1Q192.6 50.3 193.5 51.1Q194.4 51.8 195.9 51.8Z M208.9 55.6V34.7H214.4V38.7H214.5Q214.8 37.0 215.9 35.9Q217.4 34.3 220.0 34.3Q223.0 34.3 224.9 36.5Q226.7 38.6 226.7 42.1V55.6H221.0V42.7Q221.0 41.1 220.2 40.2Q219.3 39.3 217.8 39.3Q216.2 39.3 215.4 40.2Q214.6 41.1 214.6 42.7V55.6Z"/></svg>';
 // версия под подписью — менять вместе с VERSION в sw.js
-const APP_VER = '74 от 07.11.2026';
+const APP_VER = '77 от 07.11.2026';
 const CONFIG = {
   // Адрес API Gateway из Яндекс Cloud, напр. 'https://d5dxxxxxxxx.apigw.yandexcloud.net'
   // Пусто — демо-режим: данные хранятся только на этом устройстве, вы — DEMO_ME.
@@ -342,6 +342,50 @@ function holiday(k){
   return null;
 }
 const isOff = k => { const h = holiday(k); return !!(h && h.off); };
+// памятные и профессиональные дни — без выделения в календаре, только подписью в шторке дня
+const MEM_FIXED = {'01-13':'Старый Новый год · День российской печати','01-19':'Крещение','01-25':'Татьянин день — день студентов','02-08':'День российской науки','02-14':'День святого Валентина',
+  '02-21':'Международный день родного языка','03-01':'Всемирный день кошек','03-27':'Всемирный день театра','04-01':'День смеха','04-12':'День космонавтики','04-22':'День Земли',
+  '05-07':'День радио','05-15':'Международный день семьи','05-24':'День славянской письменности и культуры','05-27':'Общероссийский день библиотек','05-28':'День пограничника',
+  '06-01':'День защиты детей','06-05':'День эколога','06-06':'Пушкинский день — день русского языка','06-22':'День памяти и скорби','07-08':'День семьи, любви и верности',
+  '08-02':'День ВДВ','08-22':'День Государственного флага','09-01':'День знаний','09-27':'День воспитателя · День туризма','10-01':'День пожилых людей · День музыки',
+  '10-04':'День защиты животных','10-05':'День учителя','10-28':'День бабушек и дедушек','11-10':'День сотрудника полиции','11-14':'День логопеда','11-21':'День бухгалтера',
+  '12-03':'День неизвестного солдата','12-09':'День Героев Отечества','12-12':'День Конституции','12-22':'День энергетика','12-27':'День спасателя'};
+// шуточные и международные дни — тоже только подписью, с 🎈
+const MEM_FUN = {"01-04": "День спагетти", "01-11": "Международный день «спасибо»", "01-21": "Международный день объятий", "01-23": "День ручного письма", "01-28": "День защиты персональных данных", "02-02": "День сурка", "02-09": "Всемирный день пиццы", "02-17": "День спонтанной доброты", "02-22": "День кошек в Японии", "02-27": "Международный день полярного медведя", "03-03": "Всемирный день писателя · День дикой природы", "03-14": "День числа π", "03-20": "Международный день счастья", "03-21": "Всемирный день поэзии · День кукольника", "03-22": "Всемирный день воды", "03-31": "Всемирный день бэкапа", "04-02": "Международный день детской книги", "04-07": "Всемирный день здоровья", "04-23": "Всемирный день книги", "04-25": "День ДНК", "04-29": "Международный день танца", "05-04": "День «Звёздных войн» (May the 4th)", "05-20": "Всемирный день пчёл", "05-21": "Международный день чая", "05-25": "День гика · День полотенца", "05-31": "Всемирный день без табака", "06-03": "Всемирный день велосипеда", "06-08": "Всемирный день океанов", "06-18": "Международный день суши", "06-21": "День селфи", "06-30": "День социальных сетей", "07-02": "Всемирный день НЛО", "07-06": "Всемирный день поцелуя", "07-07": "Всемирный день шоколада", "07-17": "Всемирный день эмодзи", "07-20": "Международный день шахмат", "07-30": "Международный день дружбы", "08-08": "Международный день кошек", "08-12": "Международный день молодёжи", "08-13": "Международный день левшей", "08-19": "Всемирный день фотографии", "08-26": "День собак", "09-05": "Международный день благотворительности", "09-19": "День «Говори как пират»", "09-21": "Международный день мира", "09-30": "День интернета в России", "10-01": "Международный день кофе", "10-16": "Всемирный день хлеба", "10-20": "Международный день повара", "10-29": "Международный день интернета", "10-31": "Хэллоуин", "11-13": "Всемирный день доброты", "11-16": "День толерантности", "11-17": "Международный день студентов", "11-19": "Международный мужской день", "11-21": "Всемирный день приветствий", "11-30": "День защиты информации", "12-05": "День волонтёра", "12-15": "Международный день чая (ещё один)", "12-25": "Католическое Рождество"};
+// «n-е воскресенье месяца» и т.п.: [месяц, день недели (0 — вс), номер (-1 — последний), название]
+const MEM_RULE = [[6,0,3,'День медицинского работника'],[7,0,-1,'День ВМФ'],[8,6,2,'День физкультурника'],[8,0,2,'День строителя'],[10,0,3,'День отца'],[11,0,-1,'День матери']];
+function orthEaster(y){ const a = y % 4, b = y % 7, c = y % 19, d = (19 * c + 15) % 30, e = (2 * a + 4 * b - d + 34) % 7, m = Math.floor((d + e + 114) / 31), day = ((d + e + 114) % 31) + 1; return addDays(new Date(y, m - 1, day), 13); }
+// все праздники года по месяцам
+function openHolidays(y){
+  y = y || TODAY.getFullYear();
+  let h = `<div class="dpHead"><h2>Праздники ${y}</h2></div>
+    <div class="vnav" style="margin:-4px 0 10px"><button class="lnk press" data-act="hols" data-y="${y - 1}" aria-label="Прошлый год">‹</button><button class="lnk press" data-act="hols" data-y="${y + 1}" aria-label="Следующий год">›</button></div>`;
+  for (let m = 0; m < 12; m++){
+    let rows = '';
+    for (let d = new Date(y, m, 1); d.getMonth() === m; d = addDays(d, 1)){
+      const k = key(d), hd = holiday(k), mem = memDays(k);
+      if (!hd && !mem.length) continue;
+      const off = hd && hd.off;
+      rows += `<button class="hrow press${k === TODAY_K ? ' today' : ''}" data-hgo="${k}">${dateCol(k)}<span style="min-width:0">${hd ? `<div class="hn${off ? ' off' : ''}">${esc(hd.name)}</div>` : ''}${mem.map(n => `<div class="hn mem">${esc(n)}</div>`).join('')}</span></button>`;
+    }
+    if (rows) h += `<div class="msep">${MONTHS[m]}</div>${rows}`;
+  }
+  openSheet(h);
+}
+function memDays(k){
+  const d = parse(k), y = d.getFullYear(), out = [];
+  if (MEM_FIXED[k.slice(5)]) out.push(MEM_FIXED[k.slice(5)]);
+  if (MEM_FUN[k.slice(5)]) out.push('🎈 ' + MEM_FUN[k.slice(5)]);
+  for (const [m, wd, n, name] of MEM_RULE){
+    if (d.getMonth() + 1 !== m || d.getDay() !== wd) continue;
+    const nth = Math.ceil(d.getDate() / 7), last = d.getMonth() !== addDays(d, 7).getMonth();
+    if (n === nth || (n === -1 && last)) out.push(name);
+  }
+  const ea = orthEaster(y), diff = Math.round((d - ea) / 864e5);
+  if (diff === 0) out.push('Пасха'); if (diff === -49) out.push('Прощёное воскресенье, конец Масленицы'); if (diff >= -55 && diff < -49) out.push('Масленица'); if (diff === 49) out.push('Троица');
+  const doy = Math.round((d - new Date(y, 0, 1)) / 864e5) + 1; if (doy === 256) out.push('День программиста');
+  return out;
+}
 // переход между вкладками нижнего меню (и по кнопкам, и свайпом)
 const TABS = ['month', 'year', 'list', 'set'];
 function goView(v){
@@ -597,7 +641,7 @@ function openDay(k, dir){
   const busy = new Set(list.flatMap(e => e.req && e.req.st === 'yes' ? [...e.who, e.req.to] : e.who));
   const free = PEOPLE.filter(p => !busy.has(p.id));
   const hd = holiday(k);
-  let h = `<div class="dpHead"><h2>${WDF[d.getDay()]}, ${fmtDay(k)}</h2>${busy.size ? '' : '<span class="tag">Все свободны</span>'}</div>${hd ? `<div class="holname${hd.off ? ' off' : ''}">${esc(hd.name)}</div>` : ''}`;
+  let h = `<div class="dpHead"><h2>${WDF[d.getDay()]}, ${fmtDay(k)}</h2>${busy.size ? '' : '<span class="tag">Все свободны</span>'}</div>${hd ? `<div class="holname${hd.off ? ' off' : ''}">${esc(hd.name)}</div>` : ''}${memDays(k).map(n => `<div class="holname">${esc(n)}</div>`).join('')}`;
   if (list.length){
     h += list.map(e => evHTML(e)).join('');   // без даты слева: день и так в заголовке
     if (free.length) h += `<div class="freeLine">Свободны: <b>${joinNames(free.map(p=>p.id))}</b></div>`;
@@ -799,6 +843,7 @@ function lookHTML(){
   return `<div class="set">
     <div class="setRow"><div class="k">Тема</div>${seg('theme', themeName, [['auto','Авто'],['light','Светлая'],['dark','Тёмная']])}</div>
     <div class="setRow"><div class="k">Стиль</div>${seg('skin', skinName, SKINS)}</div>
+    <div class="setRow"><div><div class="k">Список праздников</div><div class="v">Официальные, памятные и шуточные 🎈</div></div><button class="lnk press" data-act="hols">Открыть</button></div>
     <div class="setRow"><div><div class="k">Цвета календаря</div><div class="v">Если полосы кажутся тусклыми — «Ярче»</div></div>${seg('bright', bright, [['soft','Мягкие'],['vivid','Ярче']])}</div>
     <div class="setRow"><div><div class="k">Установка на телефон</div><div class="v">${standalone ? 'Установлено' : 'Инструкция для iPhone и Android'}</div></div><button class="lnk press" data-act="howto">Как</button></div></div>`;
 }
@@ -1409,6 +1454,7 @@ document.addEventListener('click', ev => {
   if (d.open){ const e = entries.find(x => x.id === d.open); if (!e) return; openView(e); return; }
   if (d.view && picking) stopPick();
   if (d.view){ goView(d.view); return; }
+  if (d.hgo){ closeSheet(); const g = parse(d.hgo); openMonth(mIdx(g.getFullYear(), g.getMonth()), d.hgo); setTimeout(() => openDay(d.hgo), 350); return; }
   if (d.ym){ const [yy,mm] = d.ym.split('-').map(Number); openMonth(mIdx(yy,mm)); return; }
   if (d.goto){ const g = parse(d.goto); openMonth(mIdx(g.getFullYear(), g.getMonth()), d.goto); return; }
   switch (d.act){
@@ -1461,6 +1507,7 @@ document.addEventListener('click', ev => {
     case 'pushAll': api('PATCH', '/me', {pushAll: !meInfo.pushAll}).then(sync).catch(() => toast('Не получилось', 'Нет связи с сервером')); break;
     case 'push': pushOn ? unsubscribePush() : subscribePush(true); break;
     case 'news': openNews(); break;
+    case 'hols': openHolidays(d.y ? +d.y : 0); break;
     case 'newsOk': markSeen(); closeSheet(); render(); break;
     case 'pushTest': api('POST', '/pushtest').then(r => toast('Проверка', r.devices ? `Пуш отправлен (устройств: ${r.devices}). Не пришёл за минуту — выключи и включи уведомления.` : 'Сервер не знает этот телефон — выключи и включи уведомления'))
       .catch(e => toast('Проверка', e.status === 404 ? 'Обновите функцию на сервере' : 'Нет связи с сервером')); break;
