@@ -275,6 +275,9 @@ button.setRow{width:100%;border:0;border-bottom:.5px solid var(--line);backgroun
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .sig .vo{stroke:none}}
 .ver{text-align:center;margin:4px 0 0;color:var(--muted);font-size:12px}
 .sync{position:fixed;top:calc(8px + env(safe-area-inset-top,0px));right:12px;z-index:9;font-size:12px;font-weight:600;color:var(--muted);background:var(--card);border-radius:999px;padding:4px 10px}
+.sync.busy::before{content:"";display:inline-block;width:10px;height:10px;margin-right:6px;vertical-align:-1px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .8s linear infinite}
+.sync.upd{color:#fff;background:var(--acc);cursor:pointer}
+@keyframes spin{to{transform:rotate(360deg)}}
 
 /* нижняя панель */
 .dock{position:fixed;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:10;display:flex;justify-content:center;gap:10px;padding:0 14px;pointer-events:none}
@@ -559,6 +562,6 @@ body.feed.skin-oneui .hdr{flex-direction:row;align-items:flex-end;gap:10px}
   <div><div class="t1" id="toastT1"></div><div class="t2" id="toastT2"></div></div>
 </div>
 
-<script src="app.js?v=87"></script>
+<script src="app.js?v=88"></script>
 </body>
 </html>
