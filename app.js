@@ -2,7 +2,7 @@
 // подпись автора: знак T/V-бык (V из Монеток, T с рогами)
 const SIG = '<svg class="sig" viewBox="0 -16 229 98" role="img" aria-label="itivan" style="height:29px;width:auto;display:block;overflow:visible;color:var(--ink)"><svg x="2" y="5" width="80" height="74" viewBox="40 0 220 160"><polyline class="vo" points="64,-20 150,172 236,-20" fill="none" stroke-width="42"/><polyline points="64,-20 150,172 236,-20" fill="none" stroke="#FF2E93" stroke-width="30"/></svg><svg x="2" y="5" width="80" height="74" viewBox="40 0 220 160" style="overflow:visible"><g style="fill:var(--bg);stroke:var(--bg)" stroke-width="20" stroke-linejoin="round"><path d="M150 0 L100 0 Q66 0 48 -44 Q48 30 100 30 L150 30 Z"/><path d="M150 0 L200 0 Q234 0 252 -44 Q252 30 200 30 L150 30 Z"/><path d="M135 0 H165 V160 H135 Z"/></g><g fill="currentColor"><path d="M150 0 L100 0 Q66 0 48 -44 Q48 30 100 30 L150 30 Z"/><path d="M150 0 L200 0 Q234 0 252 -44 Q252 30 200 30 L150 30 Z"/><path d="M135 0 H165 V160 H135 Z"/></g></svg><path fill="currentColor" d="M102.6 55.6V50.5H109.8V39.9H103.6V34.7H115.2V50.5H121.2V55.6ZM112.1 31.4Q110.6 31.4 109.6 30.6Q108.7 29.8 108.7 28.5Q108.7 27.1 109.6 26.3Q110.6 25.5 112.1 25.5Q113.7 25.5 114.6 26.3Q115.5 27.1 115.5 28.5Q115.5 29.8 114.6 30.6Q113.7 31.4 112.1 31.4Z M134.9 55.6Q131.7 55.6 129.9 53.8Q128.1 52.0 128.1 48.8V39.9H122.6V34.7H128.1V28.8H133.8V34.7H141.6V39.9H133.8V48.8Q133.8 50.5 135.5 50.5H141.2V55.6Z M145.2 55.6V50.5H152.4V39.9H146.1V34.7H157.7V50.5H163.8V55.6ZM154.7 31.4Q153.1 31.4 152.2 30.6Q151.2 29.8 151.2 28.5Q151.2 27.1 152.2 26.3Q153.1 25.5 154.7 25.5Q156.2 25.5 157.2 26.3Q158.1 27.1 158.1 28.5Q158.1 29.8 157.2 30.6Q156.2 31.4 154.7 31.4Z M171.7 55.6 164.8 34.7H170.7L174.2 46.5Q174.5 47.5 174.8 48.8Q175.1 50.0 175.3 50.8Q175.5 50.0 175.7 48.8Q176.0 47.5 176.3 46.5L179.8 34.7H185.6L178.8 55.6Z M193.8 56.0Q190.6 56.0 188.8 54.3Q186.9 52.6 186.9 49.7Q186.9 46.5 189.1 44.8Q191.3 43.1 195.4 43.1H199.7V41.6Q199.7 40.4 198.9 39.6Q198.0 38.9 196.6 38.9Q195.3 38.9 194.4 39.5Q193.5 40.1 193.3 41.2H187.8Q188.1 38.0 190.6 36.2Q193.0 34.3 196.8 34.3Q200.8 34.3 203.1 36.3Q205.4 38.3 205.4 41.6V55.6H199.9V52.2H199.8Q199.5 53.7 198.3 54.6Q196.6 56.0 193.8 56.0ZM195.9 51.8Q197.6 51.8 198.7 50.9Q199.7 50.0 199.7 48.6V46.4H195.5Q194.2 46.4 193.4 47.1Q192.6 47.8 192.6 49.1Q192.6 50.3 193.5 51.1Q194.4 51.8 195.9 51.8Z M208.9 55.6V34.7H214.4V38.7H214.5Q214.8 37.0 215.9 35.9Q217.4 34.3 220.0 34.3Q223.0 34.3 224.9 36.5Q226.7 38.6 226.7 42.1V55.6H221.0V42.7Q221.0 41.1 220.2 40.2Q219.3 39.3 217.8 39.3Q216.2 39.3 215.4 40.2Q214.6 41.1 214.6 42.7V55.6Z"/></svg>';
 // версия под подписью — менять вместе с VERSION в sw.js
-const APP_VER = '85 от 08.11.2026';
+const APP_VER = '86 от 09.11.2026';
 const CONFIG = {
   // Адрес API Gateway из Яндекс Cloud, напр. 'https://d5dxxxxxxxx.apigw.yandexcloud.net'
   // Пусто — демо-режим: данные хранятся только на этом устройстве, вы — DEMO_ME.
@@ -109,6 +109,7 @@ function mergePut(prev, req, by){
   const vis = Array.isArray(req.vis) ? req.vis.filter(p => p !== by) : 'all';
   const out = {id:req.id, by, what:req.what, from:req.from, to:req.to, who, inv, vis, tf:req.tf || '', tt:req.tt || '', noRem:!!req.noRem, ts:Date.now()};
   const rq = req.req;
+  if (prev && prev.days){ const d = {}; for (const [u, ks] of Object.entries(prev.days)){ if (!who.includes(u)) continue; const f = ks.filter(k => k >= req.from && k <= req.to); if (f.length) d[u] = f; } if (Object.keys(d).length) out.days = d; }
   if (rq && rq.to && rq.to !== by && P[rq.to] && rq.text) out.req = {to:rq.to, text:rq.text, st: prev && prev.req && prev.req.to === rq.to && prev.req.text === rq.text ? prev.req.st : 'wait'};
   return out;
 }
@@ -132,6 +133,10 @@ function applyOp(list, op){
   } else if (op.op === 'ask'){
     if (!prev || owner(prev) === op.by || prev.who.includes(op.by)) return list;
     out[i] = {...prev, inv:{...(prev.inv || {}), [op.by]:'ask'}, ts:Date.now()};
+  } else if (op.op === 'days'){
+    if (!prev || !prev.who.includes(op.by)) return list;
+    const days = {...(prev.days || {})}; if (op.days && op.days.length) days[op.by] = op.days; else delete days[op.by];
+    out[i] = {...prev, ts:Date.now()}; if (Object.keys(days).length) out[i].days = days; else delete out[i].days;
   } else if (op.op === 'req'){
     if (!prev || !prev.req || prev.req.to !== op.by) return list;
     out[i] = {...prev, req:{...prev.req, st: op.ans === 'yes' ? 'yes' : 'no'}, ts:Date.now()};
@@ -237,6 +242,7 @@ async function sync(){
         else if (op.op === 'ask') await api('POST', `/entries/${op.id}/ask`);
         else if (op.op === 'answer') await api('POST', `/entries/${op.id}/answer`, {who:op.who, ans:op.ans});
         else if (op.op === 'req') await api('POST', `/entries/${op.id}/req`, {ans:op.ans});
+        else if (op.op === 'days') await api('POST', `/entries/${op.id}/days`, {days:op.days || []});
         else await api('POST', `/entries/${op.id}/rsvp`, {ans:op.ans});
       } catch(e){ if (!(e.status >= 400 && e.status < 500)) throw e; } // отклонённую сервером операцию просто выбрасываем
       pending.shift(); store(KEYS.pending, pending);
@@ -329,6 +335,18 @@ function helperOf(e){
   return HELP.get(e);
 }
 const srvReq = () => !ONLINE || !!(meInfo && meInfo.req);
+const srvDays = () => !ONLINE || !!(meInfo && meInfo.days);
+const daysTxt = ks => { const ds = ks.map(parse); return ds.length > 3 ? `${ds.length} ${plural(ds.length, 'день', 'дня', 'дней')}` : ds.map(d => `${d.getDate()} ${MONTHS_G[d.getMonth()].slice(0, 3)}`).join(', '); };
+// участник выбирает, в какие дни дела он реально будет
+let mdSel = null, mdId = null;
+function openMyDays(id){
+  const e = entries.find(x => x.id === id); if (!e) return;
+  mdId = id; const all = []; for (let d = parse(e.from); key(d) <= e.to; d = addDays(d, 1)) all.push(key(d));
+  mdSel = new Set(e.days && e.days[ME()] ? e.days[ME()] : all);
+  openSheet(`<h2>В какие дни ты будешь?</h2><div class="hint" style="margin:0 0 12px">«${esc(e.what)}» — ${fmtRange(e.from, e.to)}. Отметь свои дни: в календаре ты будешь занят только в них.</div>
+    <div class="whoPick" id="mdPick">${all.map(k => { const d = parse(k); return `<button type="button" class="chip press" data-mdk="${k}" aria-pressed="${mdSel.has(k)}">${['вс','пн','вт','ср','чт','пт','сб'][d.getDay()]} ${d.getDate()}</button>`; }).join('')}</div>
+    <button class="btn press" data-act="myDaysSave" style="margin-top:14px">Сохранить</button>`);
+}
 const reqSt = e => e.req.st === 'yes' ? verb(e.req.to, 'согласился') : e.req.st === 'no' ? 'не может' : 'ждём ответа';
 // официальные праздники и выходные РФ (пятидневка): производственный календарь,
 // 2026 — пост. № 1466 от 24.09.2025, 2027 — пост. № 1187 от 17.09.2026. Новый год добавлять сюда.
@@ -499,7 +517,7 @@ function busyMap(){
     const h = helperOf(e);   // согласился помочь — тоже занят, отдельной полосой
     for (let d = parse(e.from); key(d) <= e.to; d = addDays(d,1)){
       const k = key(d); map[k] = map[k] || {};
-      for (const w of e.who) if (!map[k][w]) map[k][w] = e;
+      for (const w of e.who) if (!map[k][w] && !(e.days && e.days[w] && !e.days[w].includes(k))) map[k][w] = e;   // пришёл не на все дни
       if (h && !map[k][h.by]) map[k][h.by] = h;
     }
   }
@@ -724,7 +742,8 @@ function openDay(k, dir){
   state.sel = k; markSel();
   const d = parse(k);
   const list = entries.filter(e => e.from <= k && e.to >= k).sort((a,b) => a.from.localeCompare(b.from));
-  const busy = new Set(list.flatMap(e => e.req && e.req.st === 'yes' ? [...e.who, e.req.to] : e.who));
+  const here = e => e.who.filter(w => !(e.days && e.days[w] && !e.days[w].includes(k)));
+  const busy = new Set(list.flatMap(e => e.req && e.req.st === 'yes' ? [...here(e), e.req.to] : here(e)));
   const free = PEOPLE.filter(p => !busy.has(p.id));
   const hd = holiday(k);
   let h = `<div class="dpHead"><h2>${WDF[d.getDay()]}, ${fmtDay(k)}</h2>${busy.size ? '' : '<span class="tag">Все свободны</span>'}</div>${hd ? `<div class="holname${hd.off ? ' off' : ''}">${esc(hd.name)}</div>` : ''}${memDays(k).map(n => `<div class="holname">${esc(n)}</div>`).join('')}${datesOn(k).map(x => `<div class="dline">${dIcon(x)} <span>${dateLine(x, d.getFullYear())}</span><button class="lnk press" data-dshare="${x.id}">Поделиться</button></div>`).join('')}`;
@@ -1267,7 +1286,7 @@ function openView(e, dir){
   if (own) btns = `<button class="btn press" data-act="editView">Изменить</button>`;
   else if (st === 'wait') btns = `<button class="btn ok press" data-rsvp="${e.id}" data-ans="yes">Иду</button><button class="btn plain press" data-rsvp="${e.id}" data-ans="no">Не иду</button>`;
   else if (st === 'no') btns = `<button class="btn ok press" data-rsvp="${e.id}" data-ans="yes">Передумал${P[me].f ? 'а' : ''} — иду</button>`;
-  else if (mine) btns = `<button class="btn ghost press" data-rsvp="${e.id}" data-ans="no">Не пойду</button>`;
+  else if (mine) btns = (e.from !== e.to && srvDays() ? `<button class="btn press" data-act="myDays" data-id="${e.id}">Мои дни: ${e.days && e.days[me] ? daysTxt(e.days[me]) : 'все'}</button>` : '') + `<button class="btn ghost press" data-rsvp="${e.id}" data-ans="no">Не пойду</button>`;
   else if (st === 'ask') btns = `<div class="hint" style="margin-top:14px">Ты попросил${P[me].f ? 'ась' : 'ся'} — ждём, что ответит ${esc(P[by].name)}.</div>`;
   else if (srvNew() && links.friends.includes(by)) btns = `<button class="btn ok press" data-act="ask" data-id="${e.id}">Хочу с вами</button><div class="hint" style="margin-top:8px">${esc(P[by].name)} получит просьбу и решит.</div>`;
   if (e.req && e.req.to === me){
@@ -1283,7 +1302,7 @@ function openView(e, dir){
     <h2>${esc(e.what)}</h2>
     <div class="vmeta"><span>${WDF[parse(e.from).getDay()].toLowerCase()}, ${fmtRange(e.from, e.to)}${days > 1 ? ` · ${days} ${plural(days,'день','дня','дней')}` : ''}</span>
       ${e.tf ? `<span>время: ${e.tf}${e.tt ? '–' + e.tt : ''}</span>` : ''}${visTxt ? `<span>${visTxt}</span>` : ''}</div>
-    <div class="plist">${people.map(p => `<div class="prow" style="${cs(P[p])}"><span class="dot"></span>${esc(P[p].name)}<span class="st">${statusOf(e,p)}</span></div>`).join('')}${rqRow}</div>
+    <div class="plist">${people.map(p => `<div class="prow" style="${cs(P[p])}"><span class="dot"></span>${esc(P[p].name)}<span class="st">${statusOf(e,p)}${e.days && e.days[p] ? ' · ' + daysTxt(e.days[p]) : ''}</span></div>`).join('')}${rqRow}</div>
     ${btns || `<div class="hint" style="margin-top:14px">Изменить может только ${esc(P[by].name)}.</div>`}
     <div class="hint" style="margin-top:10px;text-align:center">Листай влево-вправо — соседние дела</div></div>`);
 }
@@ -1548,6 +1567,7 @@ document.addEventListener('click', ev => {
   if (d.dkind){ if (dform){ dform.kind = d.dkind; document.querySelectorAll('[data-dkind]').forEach(b => b.setAttribute('aria-pressed', b.dataset.dkind === d.dkind)); } return; }
   if (d.dedit){ openDateForm(d.dedit); return; }
   if (d.dshare){ const x = DATES.find(z => z.id === d.dshare); if (x) ONLINE ? openShareDate(x) : shareDate(x); return; }
+  if (d.mdk){ mdSel.has(d.mdk) ? mdSel.delete(d.mdk) : mdSel.add(d.mdk); t.setAttribute('aria-pressed', mdSel.has(d.mdk)); return; }
   if (d.shp){ shareSel.has(d.shp) ? shareSel.delete(d.shp) : shareSel.add(d.shp); t.setAttribute('aria-pressed', shareSel.has(d.shp)); return; }
   if (d.hgo){ closeSheet(); const g = parse(d.hgo); openMonth(mIdx(g.getFullYear(), g.getMonth()), d.hgo); setTimeout(() => openDay(d.hgo), 350); return; }
   if (d.ym){ const [yy,mm] = d.ym.split('-').map(Number); openMonth(mIdx(yy,mm)); return; }
@@ -1602,6 +1622,11 @@ document.addEventListener('click', ev => {
     case 'pushAll': api('PATCH', '/me', {pushAll: !meInfo.pushAll}).then(sync).catch(() => toast('Не получилось', 'Нет связи с сервером')); break;
     case 'push': pushOn ? unsubscribePush() : subscribePush(true); break;
     case 'news': openNews(); break;
+    case 'myDays': openMyDays(t.dataset.id); break;
+    case 'myDaysSave': { if (!mdSel.size){ toast('Мои дни', 'Отметь хотя бы один день или нажми «Не пойду»'); break; }
+      const e = entries.find(x => x.id === mdId); const n = Math.round((parse(e.to) - parse(e.from)) / 864e5) + 1;
+      const days = mdSel.size === n ? [] : [...mdSel].sort();
+      commit({op:'days', id:mdId, days}); closeSheet(); render(); toast('Сохранено', days.length ? 'Ты будешь: ' + daysTxt(days) : 'Ты будешь все дни'); break; }
     case 'dateNew': openDateForm(); break;
     case 'dShare': dform.share = !dform.share; t.classList.toggle('on', dform.share); t.setAttribute('aria-checked', dform.share); break;
     case 'dateSave': { if (!readDateForm()) break; const list = myDates().filter(x => x.id !== dform.id).concat([dform]);
